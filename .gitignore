@@ -4,3 +4,5 @@ certs/
 *.csr
 *.conf
 values.yaml.bak 
+pg_credentials.txt
+redis_credentials.txt

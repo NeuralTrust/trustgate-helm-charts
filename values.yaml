@@ -175,7 +175,7 @@ redis:
     port: 6379
     password: ""
   auth:
-    password: "fc8d0c56c01bd47b778abd9d165b9831"
+    password: "<password>"
   master:
     service:
       port: 6379
@@ -205,7 +205,7 @@ postgresql:
     existingSecretPasswordKey: postgresql-password
     database: trustgate
     username: trustgate
-    password: "fc8d0c56c01bd47b778abd9d165b9831"
+    password: "<password>"
   persistence:
     size: 50Gi
     storageClass: "" # Leave empty to use default storage class
