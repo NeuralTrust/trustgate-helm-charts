@@ -1,7 +1,7 @@
 # TrustGate Helm Chart
 
 <div align="center">
-<img src="assets/ai-gateway.svg" alt="TrustGate Logo" width="300"/>
+<img src="assets/ai-gateway.svg" alt="TrustGate Logo" width="100%"/>
 
 *A Production-Grade TrustGate for Kubernetes*
 </div>
