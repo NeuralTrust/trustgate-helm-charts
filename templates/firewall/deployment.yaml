@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "trustgate.fullname" . }}-firewall
+  labels:
+    {{- include "trustgate.firewall.labels" . | nindent 4 }}
+    component: firewall
+spec:
+  replicas: {{ .Values.firewall.replicas }}
+  selector:
+    matchLabels:
+      {{- include "trustgate.firewall.labels" . | nindent 6 }}
+      component: firewall
+  template:
+    metadata:
+      labels:
+        {{- include "trustgate.firewall.labels" . | nindent 8 }}
+        component: firewall
+    spec:
+      containers:
+      - name: firewall
+        image: "{{ .Values.firewall.image.repository }}:{{ .Values.firewall.image.tag }}"
+        args: ["proxy"]
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/trustgate/config.yaml"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "trustgate.fullname" . }}-secrets
+              key: postgresql-password
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "trustgate.fullname" . }}-secrets
+              key: redis-password
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.firewall.ports.http }}
+          name: http
+        resources:
+          {{- toYaml .Values.firewall.resources | nindent 10 }}
+        volumeMounts:
+          - name: config
+            mountPath: /etc/trustgate/config.yaml
+            subPath: config.yaml
+          - name: secrets
+            mountPath: /etc/trustgate/secrets
+            readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "trustgate.fullname" . }}-config
+        - name: secrets
+          secret:
+            secretName: {{ include "trustgate.fullname" . }}-secrets
+      {{- with .Values.firewall.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.firewall.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.firewall.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} 

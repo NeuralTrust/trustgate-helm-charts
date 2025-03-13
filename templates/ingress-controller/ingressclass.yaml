@@ -1,0 +1,11 @@
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: {{ .Values.ingressController.ingressClass }}
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+    component: nginx-controller
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "false"
+spec:
+  controller: k8s.io/{{ include "trustgate.fullname" . }}-ingress-nginx 

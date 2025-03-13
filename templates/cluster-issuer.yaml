@@ -1,0 +1,24 @@
+{{- if .Values.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.certManager.issuerName }}
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+spec:
+  acme:
+    # Production Let's Encrypt URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address for expiration notifications
+    email: {{ .Values.certManager.email }}
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+    # HTTP-01 solver for regular domains
+    - http01:
+        ingress:
+          class: {{ .Values.ingressController.ingressClass }}
+      selector:
+        matchLabels:
+          "use-http01-solver": "true"
+{{- end }} 

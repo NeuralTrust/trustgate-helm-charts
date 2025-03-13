@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-data-plane
+  labels:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: {{ .Values.dataPlane.ports.http }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane 

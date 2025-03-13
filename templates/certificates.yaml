@@ -1,0 +1,35 @@
+{{- if .Values.certManager.enabled }}
+{{- if not .Values.certManager.customCertificates.enabled }}
+# Control Plane Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "trustgate.fullname" . }}-control-plane-cert
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+    use-http01-solver: "true"
+spec:
+  secretName: trustgate-admin-tls
+  issuerRef:
+    name: {{ .Values.certManager.issuerName }}
+    kind: {{ .Values.certManager.issuerKind }}
+  dnsNames:
+    - {{ .Values.ingress.controlPlane.host }}
+---
+# Data Plane Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "trustgate.fullname" . }}-data-plane-cert
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+    use-http01-solver: "true"
+spec:
+  secretName: trustgate-gateway-tls
+  issuerRef:
+    name: {{ .Values.certManager.issuerName }}
+    kind: {{ .Values.certManager.issuerKind }}
+  dnsNames:
+    - {{ .Values.ingress.dataPlane.host | quote }}
+{{- end }} 
+{{- end }}

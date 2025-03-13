@@ -1,0 +1,6 @@
+certs/
+*.crt
+*.key
+*.csr
+*.conf
+values.yaml.bak 

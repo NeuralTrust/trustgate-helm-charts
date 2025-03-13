@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "trustgate.fullname" . }}-config
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    server:
+      admin_port: {{ .Values.controlPlane.ports.proxy }}
+      proxy_port: {{ .Values.dataPlane.ports.http }}
+      metrics_port: 9090
+      base_domain: {{ .Values.config.baseDomain }}
+
+    metrics:
+      enabled: {{ .Values.monitoring.serviceMonitor.enabled }}
+      enable_latency: true
+      enable_upstream: true
+      enable_connections: true
+      enable_per_route: true
+
+    database:
+      {{- if .Values.postgresql.enabled }}
+      host: "{{ include "trustgate.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local"
+      {{- else if .Values.postgresql.external.host }}
+      host: {{ .Values.postgresql.external.host }}
+      {{- else }}
+      host: localhost
+      {{- end }}
+      port: 5432
+      user: {{ .Values.postgresql.auth.username }}
+      password: "${DB_PASSWORD}"
+      dbname: {{ .Values.postgresql.auth.database }}
+      ssl_mode: disable
+
+    redis:
+      host: "{{ include "trustgate.fullname" . }}-redis-headless.{{ .Release.Namespace }}.svc.cluster.local"
+      port: 6379
+      db: 0
+      username: "default"
+      password: "${REDIS_PASSWORD}"

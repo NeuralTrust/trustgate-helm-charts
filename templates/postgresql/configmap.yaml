@@ -1,0 +1,25 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "trustgate.fullname" . }}-postgresql-config
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+    component: postgresql
+data:
+  postgresql.conf: |
+    listen_addresses = '*'
+    max_connections = 100
+    shared_buffers = 128MB
+    work_mem = 4MB
+    maintenance_work_mem = 64MB
+    effective_cache_size = 512MB
+    wal_level = replica
+    max_wal_size = 1GB
+    min_wal_size = 80MB
+    checkpoint_timeout = 5min
+    checkpoint_completion_target = 0.9
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+    autovacuum = on
+{{- end }}

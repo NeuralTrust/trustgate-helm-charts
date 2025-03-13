@@ -1,0 +1,335 @@
+# Additional global settings
+global:
+  imageRegistry: "docker.io"
+  imagePullSecrets: []
+  # -- Storage class to use for persistent volumes
+  # If not set, will use the cluster's default StorageClass
+  storageClass: ""
+  deploymentType: shared  # shared or dedicated
+  image:
+    registry: trustgate.registry.com
+    pullPolicy: Always
+    
+# Service Account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Common configurations
+config:
+  logLevel: "info"
+  baseDomain: "neuraltrust.app"
+  providers: {}
+
+# Firewall settings
+firewall:
+  enabled: true
+  replicas: 1
+  image:
+    repository: neuraltrust/trustgate
+    tag: latest
+  ports:
+    http: 8080
+  podSecurityContext:
+    fsGroup: 1001
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 4Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - trustgate-firewall
+          topologyKey: kubernetes.io/hostname
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Control Plane settings
+controlPlane:
+  name: trustgate-control-plane
+  replicas: 1
+  image:
+    repository: neuraltrust/trustgate
+    tag: latest
+    pullPolicy: Always
+  
+  # Add ports configuration
+  ports:
+    proxy: 8080
+  
+  podSecurityContext:
+    fsGroup: 1001
+  
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+      
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+    
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - trustgate-control-plane
+          topologyKey: kubernetes.io/hostname
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+# Data Plane settings
+dataPlane:
+  name: trustgate-data-plane
+  replicas: 1
+  
+  image:
+    repository: neuraltrust/trustgate
+    tag: latest
+    pullPolicy: Always
+  
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  
+  # Add ports configuration
+  ports:
+    http: 8081  
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+    
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 75
+    
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - trustgate-data-plane
+        topologyKey: kubernetes.io/hostname
+
+  service:
+    type: ClusterIP
+    port: 8081
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7.0-alpine
+    pullPolicy: IfNotPresent
+  # External Redis configuration if redis.enabled is false
+  external:
+    host: ""
+    port: 6379
+    password: ""
+  auth:
+    password: "fc8d0c56c01bd47b778abd9d165b9831"
+  master:
+    service:
+      port: 6379
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+  replica:
+    replicaCount: 1
+    service:
+      port: 6379
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 17.2-alpine
+  auth:
+    existingSecret: trustgate-shared-secrets
+    existingSecretPasswordKey: postgresql-password
+    database: trustgate
+    username: trustgate
+    password: "fc8d0c56c01bd47b778abd9d165b9831"
+  persistence:
+    size: 50Gi
+    storageClass: "" # Leave empty to use default storage class
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Monitoring settings
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+  external:
+    enabled: false
+    endpoint: ""
+    scrapeInterval: 30s
+  
+  grafanaDashboards:
+    enabled: true
+    
+  prometheusRules:
+    enabled: true
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          description: High error rate detected
+          
+  logging:
+    enabled: true
+    elasticsearch:
+      enabled: true
+      replicas: 3
+
+# Default values for TrustGate
+ingress:
+  enabled: true
+  className: trustgate-nginx
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/cors-expose-headers: "*"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "X-API-KEY,X-API-Key,x-api-key,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,token,Token,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS, DELETE"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/x-content-type-options: "nosniff"
+    nginx.ingress.kubernetes.io/x-frame-options: "DENY"
+    nginx.ingress.kubernetes.io/x-xss-protection: "1; mode=block"
+  controlPlane:
+    host: "admin.neuraltrust.ai"
+  dataPlane:
+    host: "gateway.neuraltrust.app"
+
+# Ingress Controller configuration
+ingressController:
+  enabled: true
+  replicas: 1
+  image:
+    repository: k8s.gcr.io/ingress-nginx/controller
+    tag: v1.11.3
+    pullPolicy: IfNotPresent
+  
+  # Specific IngressClass for TrustGate
+  ingressClass: trustgate-nginx
+  # Namespace will be set by the template
+  watchNamespace: ""
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  service:
+    type: LoadBalancer
+    annotations: {}
+    # Optionally add cloud provider specific annotations
+    # service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+  
+  config:
+    use-forwarded-headers: "true"
+    proxy-buffer-size: "16k"
+    ssl-redirect: "true"
+    hsts: "true"
+    hsts-include-subdomains: "true"
+    server-tokens: "false"
+
+# Optional: Add cert-manager configuration
+certManager:
+  enabled: true
+  issuerName: "trustgate-letsencrypt-prod"
+  issuerKind: "ClusterIssuer"
+  email: "admin@neuraltrust.ai"
+  
+  # Custom certificate support for both planes
+  customCertificates:
+    enabled: false  # Set to true when using custom certs
+    controlPlane:
+      cert: |
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
+      key: |
+        -----BEGIN PRIVATE KEY-----
+        -----END PRIVATE KEY-----
+    dataPlane:
+      cert: |
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
+      key: |
+        -----BEGIN PRIVATE KEY-----
+        -----END PRIVATE KEY-----

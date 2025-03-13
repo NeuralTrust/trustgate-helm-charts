@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-control-plane
+  labels:
+    {{- include "trustgate.controlPlane.labels" . | nindent 4 }}
+    component: control-plane
+spec:
+  replicas: {{ .Values.controlPlane.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "trustgate.controlPlane.labels" . | nindent 6 }}
+      component: control-plane
+  template:
+    metadata:
+      labels:
+        {{- include "trustgate.controlPlane.labels" . | nindent 8 }}
+        component: control-plane
+    spec:
+      containers:
+      - name: control-plane
+        image: "{{ .Values.controlPlane.image.repository }}:{{ .Values.controlPlane.image.tag }}"
+        args: ["admin"]
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/trustgate/config.yaml"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "trustgate.fullname" . }}-secrets
+              key: postgresql-password
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "trustgate.fullname" . }}-secrets
+              key: redis-password
+        - name: LOG_LEVEL
+          value: "debug"
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.controlPlane.ports.proxy }}
+          name: http
+        resources:
+          {{- toYaml .Values.controlPlane.resources | nindent 10 }}
+        volumeMounts:
+          - name: config
+            mountPath: /etc/trustgate/config.yaml
+            subPath: config.yaml
+          - name: secrets
+            mountPath: /etc/trustgate/secrets
+            readOnly: true
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: http
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: http
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 20
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "trustgate.fullname" . }}-config
+        - name: secrets
+          secret:
+            secretName: {{ include "trustgate.fullname" . }}-secrets 
