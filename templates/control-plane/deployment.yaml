@@ -22,49 +22,63 @@ spec:
         image: "{{ .Values.controlPlane.image.repository }}:{{ .Values.controlPlane.image.tag }}"
         args: ["admin"]
         env:
-        - name: CONFIG_PATH
-          value: "/etc/trustgate/config.yaml"
-        - name: DB_PASSWORD
+        # Core configuration
+        - name: LOG_LEVEL
+          value: {{ .Values.controlPlane.env.LOG_LEVEL | default "info" }}
+        - name: SERVER_BASE_DOMAIN
+          value: {{ .Values.controlPlane.env.SERVER_BASE_DOMAIN | default "example.com" }}
+        - name: SERVER_ADMIN_PORT
+          value: {{ .Values.controlPlane.env.SERVER_ADMIN_PORT | default "8080" | quote }}
+        - name: SERVER_METRICS_PORT
+          value: {{ .Values.controlPlane.env.SERVER_METRICS_PORT | default "9090" | quote }}
+        - name: SERVER_PROXY_PORT
+          value: {{ .Values.controlPlane.env.SERVER_PROXY_PORT | default "8081" | quote }}
+        
+        # Database configuration
+        - name: DATABASE_HOST
+          value: {{ include "trustgate.postgresql.host" . }}
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_USER
+          value: {{ .Values.postgresql.auth.username }}
+        - name: DATABASE_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ include "trustgate.fullname" . }}-secrets
-              key: postgresql-password
+              name: {{ include "trustgate.postgresql.secretName" . }}
+              key: password
+        - name: DATABASE_NAME
+          value: {{ .Values.postgresql.auth.database }}
+        - name: DATABASE_SSL_MODE
+          value: {{ .Values.controlPlane.env.DATABASE_SSL_MODE | default "disable" }}
+        
+        # Redis configuration
+        - name: REDIS_HOST
+          value: {{ include "trustgate.redis.host" . }}-master
+        - name: REDIS_PORT
+          value: "6379"
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ include "trustgate.fullname" . }}-secrets
+              name: {{ include "trustgate.redis.secretName" . }}
               key: redis-password
-        - name: LOG_LEVEL
-          value: "debug"
+        - name: REDIS_DB
+          value: "0"
+        
         imagePullPolicy: {{ .Values.global.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.controlPlane.ports.proxy }}
           name: http
         resources:
           {{- toYaml .Values.controlPlane.resources | nindent 10 }}
-        volumeMounts:
-          - name: config
-            mountPath: /etc/trustgate/config.yaml
-            subPath: config.yaml
-          - name: secrets
-            mountPath: /etc/trustgate/secrets
-            readOnly: true
-        # readinessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: http
-        #   initialDelaySeconds: 5
-        #   periodSeconds: 10
-        # livenessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: http
-        #   initialDelaySeconds: 15
-        #   periodSeconds: 20
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "trustgate.fullname" . }}-config
-        - name: secrets
-          secret:
-            secretName: {{ include "trustgate.fullname" . }}-secrets 
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20

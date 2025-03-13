@@ -22,18 +22,16 @@ spec:
         image: "{{ .Values.firewall.image.repository }}:{{ .Values.firewall.image.tag }}"
         args: ["proxy"]
         env:
-        - name: CONFIG_PATH
-          value: "/etc/trustgate/config.yaml"
-        - name: DB_PASSWORD
+        - name: HUGGINGFACE_TOKEN
           valueFrom:
             secretKeyRef:
-              name: {{ include "trustgate.fullname" . }}-secrets
-              key: postgresql-password
-        - name: REDIS_PASSWORD
+              name: hf-api-key
+              key: HUGGINGFACE_TOKEN
+        - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: {{ include "trustgate.fullname" . }}-secrets
-              key: redis-password
+              name: firewall-jwt-secret
+              key: JWT_SECRET
         imagePullPolicy: {{ .Values.global.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.firewall.ports.http }}
@@ -41,12 +39,8 @@ spec:
         resources:
           {{- toYaml .Values.firewall.resources | nindent 10 }}
         volumeMounts:
-          - name: config
-            mountPath: /etc/trustgate/config.yaml
-            subPath: config.yaml
-          - name: secrets
-            mountPath: /etc/trustgate/secrets
-            readOnly: true
+          - name: huggingface-cache
+            mountPath: "/root/.cache/huggingface"
         readinessProbe:
           httpGet:
             path: /health
@@ -64,12 +58,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        - name: config
-          configMap:
-            name: {{ include "trustgate.fullname" . }}-config
-        - name: secrets
-          secret:
-            secretName: {{ include "trustgate.fullname" . }}-secrets
+        - name: huggingface-cache
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Name }}-huggingface-cache"
       {{- with .Values.firewall.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

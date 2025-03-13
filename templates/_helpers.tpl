@@ -64,9 +64,23 @@ Redis host
 {{- end }}
 
 {{/*
+Redis secret name
+*/}}
+{{- define "trustgate.redis.secretName" -}}
+{{- printf "%s-redis" (include "trustgate.fullname" .) }}
+{{- end }}
+
+{{/*
 PostgreSQL host
 */}}
 {{- define "trustgate.postgresql.host" -}}
+{{- printf "%s-postgresql" (include "trustgate.fullname" .) }}
+{{- end }}
+
+{{/*
+PostgreSQL secret name
+*/}}
+{{- define "trustgate.postgresql.secretName" -}}
 {{- printf "%s-postgresql" (include "trustgate.fullname" .) }}
 {{- end }}
 
@@ -84,4 +98,12 @@ Data Plane labels
 {{- define "trustgate.dataPlane.labels" -}}
 {{ include "trustgate.labels" . }}
 app.kubernetes.io/component: data-plane
+{{- end }}
+
+{{/*
+Firewall labels
+*/}}
+{{- define "trustgate.firewall.labels" -}}
+{{ include "trustgate.labels" . }}
+app.kubernetes.io/component: firewall
 {{- end }} 

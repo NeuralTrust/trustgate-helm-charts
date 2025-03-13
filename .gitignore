@@ -6,3 +6,4 @@ certs/
 values.yaml.bak 
 pg_credentials.txt
 redis_credentials.txt
+firewall_jwt_credentials.txt

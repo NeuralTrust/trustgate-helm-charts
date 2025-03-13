@@ -7,10 +7,10 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 # Set environment variables
-NAMESPACE="trustgate-shared"
-RELEASE_NAME="trustgate-shared"
+NAMESPACE="trustgate"
+RELEASE_NAME="trustgate"
 
-echo -e "${GREEN}Deploying shared TrustGate infrastructure...${NC}"
+echo -e "${GREEN}Deploying TrustGate infrastructure...${NC}"
 
 # Check if Prometheus Operator CRDs are installed
 if kubectl get crd servicemonitors.monitoring.coreos.com > /dev/null 2>&1; then
@@ -48,7 +48,7 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
       --docker-server=$REGISTRY_SERVER \
       --docker-username=_json_key \
       --docker-password="$(cat $GOOGLE_APPLICATION_CREDENTIALS)" \
-      --docker-email=${REGISTRY_EMAIL:-"user@example.com"} \
+      --docker-email=${REGISTRY_EMAIL:-"admin@neuraltrust.ai"} \
       --namespace=$NAMESPACE \
       --dry-run=client -o yaml | kubectl apply -f -
     
@@ -69,7 +69,7 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
           --docker-server=$REGISTRY_SERVER \
           --docker-username=_json_key \
           --docker-password="$(cat $JSON_KEY_PATH)" \
-          --docker-email=${REGISTRY_EMAIL:-"user@example.com"} \
+          --docker-email=${REGISTRY_EMAIL:-"admin@neuraltrust.ai"} \
           --namespace=$NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
         
@@ -109,12 +109,44 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   if [ -n "$HF_API_KEY" ]; then
     echo -e "${GREEN}Creating Hugging Face API key secret${NC}"
     kubectl create secret generic hf-api-key \
-      --from-literal=api-key=$HF_API_KEY \
+      --from-literal=HUGGINGFACE_TOKEN=$HF_API_KEY \
       --namespace=$NAMESPACE \
       --dry-run=client -o yaml | kubectl apply -f -
     
     HUGGINGFACE_SECRET="--set firewall.huggingface.apiKeySecret=hf-api-key"
   fi
+  
+  # Generate JWT secret for firewall API
+  if [ -f firewall_jwt_credentials.txt ]; then
+    echo -e "${GREEN}Using existing JWT secret from firewall_jwt_credentials.txt${NC}"
+    JWT_SECRET=$(grep "JWT Secret:" firewall_jwt_credentials.txt | cut -d' ' -f3)
+    JWT_TOKEN=$(grep "JWT Token:" firewall_jwt_credentials.txt | cut -d' ' -f3)
+  else
+    echo -e "${GREEN}Generating new JWT secret for firewall API${NC}"
+    JWT_SECRET=$(openssl rand -hex 32)
+    
+    # Generate a JWT token that doesn't expire
+    # This is a simple JWT with header: {"alg":"HS256","typ":"JWT"}, payload: {"sub":"firewall-api"}
+    JWT_HEADER=$(echo -n '{"alg":"HS256","typ":"JWT"}' | base64 | tr -d '=' | tr '/+' '_-')
+    JWT_PAYLOAD=$(echo -n '{"sub":"firewall-api","name":"TrustGate Admin","iat":1516239022}' | base64 | tr -d '=' | tr '/+' '_-')
+    JWT_SIGNATURE=$(echo -n "${JWT_HEADER}.${JWT_PAYLOAD}" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | base64 | tr -d '=' | tr '/+' '_-')
+    JWT_TOKEN="${JWT_HEADER}.${JWT_PAYLOAD}.${JWT_SIGNATURE}"
+    
+    echo "JWT Secret: $JWT_SECRET" > firewall_jwt_credentials.txt
+    echo "JWT Token: $JWT_TOKEN" >> firewall_jwt_credentials.txt
+  fi
+  
+  # Create JWT secret for firewall API
+  echo -e "${GREEN}Creating JWT secret for firewall API${NC}"
+  kubectl create secret generic firewall-jwt-secret \
+    --from-literal=JWT_SECRET=$JWT_SECRET \
+    --namespace=$NAMESPACE \
+    --dry-run=client -o yaml | kubectl apply -f -
+  
+  JWT_SECRET_CONFIG="--set firewall.auth.jwtSecret=firewall-jwt-secret"
+  
+  # Save the token to be displayed in NOTES.txt
+  JWT_TOKEN_FOR_NOTES=$JWT_TOKEN
 else
   echo -e "${YELLOW}Firewall component will be disabled${NC}"
   FIREWALL_ENABLED="--set firewall.enabled=false"
@@ -146,7 +178,7 @@ else
     echo "Redis Password: $REDIS_PASSWORD" > redis_credentials.txt
 fi
 
-# Deploy using Helm with shared configuration
+# Deploy using Helm with configuration
 echo -e "\n${GREEN}Deploying TrustGate using Helm...${NC}"
 helm upgrade --install $RELEASE_NAME . \
   --namespace $NAMESPACE \
@@ -159,7 +191,8 @@ helm upgrade --install $RELEASE_NAME . \
   $CERT_MANAGER_ENABLED \
   $FIREWALL_ENABLED \
   ${REGISTRY_CREDS:-""} \
-  ${HUGGINGFACE_SECRET:-""}
+  ${HUGGINGFACE_SECRET:-""} \
+  ${JWT_SECRET_CONFIG:-""}
 
 # Wait for pods to be ready
 echo -e "\n${GREEN}Waiting for pods to be ready...${NC}"
@@ -172,5 +205,16 @@ kubectl wait --for=condition=ready pod \
 echo -e "\n${GREEN}Deployment Status:${NC}"
 kubectl get pods -n $NAMESPACE
 
-echo -e "\n${GREEN}Shared TrustGate infrastructure deployed successfully!${NC}"
+echo -e "\n${GREEN}TrustGate infrastructure deployed successfully!${NC}"
 echo -e "You can now register gateways using the API at https://admin.neuraltrust.ai" 
+
+# If firewall is enabled, show the JWT token
+if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
+  echo -e "\n${GREEN}Firewall API Token:${NC}"
+  echo -e "${JWT_TOKEN_FOR_NOTES}"
+  echo -e "\n${YELLOW}Use this token in the Authorization header when making requests to the Firewall API:${NC}"
+  echo -e "curl -X POST https://firewall.example.com/api/v1/scan \\"
+  echo -e "  -H \"Authorization: Bearer ${JWT_TOKEN_FOR_NOTES}\" \\"
+  echo -e "  -H \"Content-Type: application/json\" \\"
+  echo -e "  -d '{\"text\": \"Your text to scan\"}'"
+fi 

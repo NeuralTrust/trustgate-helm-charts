@@ -6,6 +6,9 @@ Your TrustGate deployment is now being set up. This may take a few minutes.
 You can access the TrustGate services at:
   - Control Plane: https://{{ .Values.ingress.controlPlane.host }}
   - Data Plane: https://{{ .Values.ingress.dataPlane.host }}
+{{- if .Values.firewall.enabled }}
+  - Firewall API: https://{{ .Values.ingress.firewall.host | default "firewall.example.com" }}
+{{- end }}
 {{- else }}
 To get the IP addresses for your TrustGate services:
 
@@ -15,9 +18,17 @@ To get the IP addresses for your TrustGate services:
 2. For the Data Plane:
    kubectl get svc {{ .Release.Name }}-data-plane -n {{ .Release.Namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 
+{{- if .Values.firewall.enabled }}
+3. For the Firewall API:
+   kubectl get svc {{ .Release.Name }}-firewall -n {{ .Release.Namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+{{- end }}
+
 If you're using NodePort instead of LoadBalancer, get the NodePort and any node IP:
    Control Plane port: kubectl get svc {{ .Release.Name }}-control-plane -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[0].nodePort}'
    Data Plane port: kubectl get svc {{ .Release.Name }}-data-plane -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[0].nodePort}'
+{{- if .Values.firewall.enabled }}
+   Firewall API port: kubectl get svc {{ .Release.Name }}-firewall -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[0].nodePort}'
+{{- end }}
    Node IP: kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}'
 {{- end }}
 
@@ -74,6 +85,31 @@ Monitor the deployment:
 
 Get the application logs:
   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}" -f
+
+{{- if .Values.firewall.enabled }}
+-------------------------------------------------
+FIREWALL API CONFIGURATION
+-------------------------------------------------
+
+To use the Firewall API, you need to include the JWT token in your requests.
+The JWT token has been generated during installation and saved to firewall_jwt_credentials.txt.
+
+Example request to the Firewall API:
+
+curl -X POST https://{{ if .Values.ingress.enabled }}{{ .Values.ingress.firewall.host | default "firewall.example.com" }}{{ else }}FIREWALL_IP:PORT{{ end }}/v1/firewall \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Your text to scan"}'
+
+To get your JWT token:
+  cat firewall_jwt_credentials.txt
+
+The Firewall API supports the following endpoints:
+- POST /api/v1/firewall - Scan text for harmful content
+- GET /api/v1/health - Check the health of the firewall service
+
+For more information on the Firewall API, please refer to the documentation.
+{{- end }}
 
 Need help? Visit:
 - Documentation: https://docs.neuraltrust.ai
