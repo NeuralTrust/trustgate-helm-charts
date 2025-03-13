@@ -3,7 +3,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "trustgate.fullname" . }}-control-plane
+  name: {{ include "trustgate.fullname" . }}-admin
   labels:
     {{- include "trustgate.labels" . | nindent 4 }}
     component: control-plane
@@ -16,12 +16,14 @@ spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
+  {{- if or .Values.certManager.enabled .Values.certManager.customCertificates.enabled }}
   tls:
     - hosts:
-        - {{ .Values.ingress.controlPlane.host | quote }}
+        - admin.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
       secretName: trustgate-admin-tls
+  {{- end }}
   rules:
-    - host: {{ .Values.ingress.controlPlane.host | quote }}
+    - host: admin.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
       http:
         paths:
           - path: /
@@ -30,13 +32,13 @@ spec:
               service:
                 name: {{ include "trustgate.fullname" . }}-control-plane
                 port:
-                  number: 80
+                  number: {{ .Values.controlPlane.ports.proxy }}
 ---
 # Data Plane Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "trustgate.fullname" . }}-data-plane
+  name: {{ include "trustgate.fullname" . }}-gateway
   labels:
     {{- include "trustgate.labels" . | nindent 4 }}
     component: data-plane
@@ -49,12 +51,14 @@ spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
+  {{- if or .Values.certManager.enabled .Values.certManager.customCertificates.enabled }}
   tls:
     - hosts:
-        - {{ .Values.ingress.dataPlane.host | quote }}
+        - gateway.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
       secretName: trustgate-gateway-tls
+  {{- end }}
   rules:
-    - host: {{ .Values.ingress.dataPlane.host | quote }}
+    - host: gateway.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
       http:
         paths:
           - path: /
@@ -63,5 +67,36 @@ spec:
               service:
                 name: {{ include "trustgate.fullname" . }}-data-plane
                 port:
-                  number: 80
+                  number: {{ .Values.dataPlane.ports.http }}
+{{- if and .Values.firewall.enabled .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "trustgate.fullname" . }}-firewall
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.annotations }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if or .Values.certManager.enabled .Values.certManager.customCertificates.enabled }}
+  tls:
+    - hosts:
+        - firewall.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+      secretName: trustgate-firewall-tls
+  {{- end }}
+  rules:
+    - host: firewall.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "trustgate.fullname" . }}-firewall
+                port:
+                  number: {{ .Values.firewall.ports.http }}
+{{- end }}
 {{- end }} 

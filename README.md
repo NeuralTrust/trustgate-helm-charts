@@ -84,6 +84,8 @@ The script will:
 - Check for required dependencies (cert-manager, Prometheus)
 - Create necessary secrets for PostgreSQL and Redis
 - Deploy TrustGate with sensible defaults
+- Wait for LoadBalancer IPs to be assigned (with timeout)
+- Generate test scripts with the actual deployment values
 - Provide access information after deployment
 
 ### Enabling the AI Firewall (Enterprise Feature)
@@ -100,6 +102,40 @@ You'll need:
 - A Hugging Face API key for model downloads
 
 The script will guide you through providing these credentials.
+
+## Testing Your Deployment
+
+After deployment, the script will automatically generate test scripts that you can use to verify your installation and explore TrustGate's features.
+
+### Rate Limiter Test
+
+The `test_rate_limiter.sh` script demonstrates how to create a gateway with rate limiting and test it with multiple requests:
+
+```bash
+./test_rate_limiter.sh
+```
+
+This script will:
+- Create a gateway with rate limiting configured
+- Create an API key for authentication
+- Set up a service and routing rules
+- Make multiple requests to demonstrate rate limiting in action
+- Show how rate limits are applied globally, per IP, and per API key
+
+### Firewall Test (if enabled)
+
+If you enabled the firewall component, a `test_firewall.sh` script will be generated:
+
+```bash
+./test_firewall.sh
+```
+
+This script will:
+- Create a gateway with firewall protection
+- Create an API key for authentication
+- Set up a service and routing rules with the firewall plugin
+- Test the gateway with both malicious and safe content
+- Demonstrate how the firewall blocks potentially harmful content
 
 ## Detailed Configuration
 
@@ -445,6 +481,22 @@ env:
         key: DATABASE_PASSWORD
 ```
 
+## Accessing TrustGate
+
+The deployment script will display the LoadBalancer IPs for accessing TrustGate services:
+
+- **Admin API**: Used to configure gateways, services, and rules
+- **Proxy API**: The actual API gateway that handles client requests
+- **Firewall API** (if enabled): Provides content filtering and security features
+
+If LoadBalancer IPs are not available after the timeout period, you can use port-forwarding:
+
+```bash
+kubectl port-forward svc/trustgate-control-plane -n trustgate 8080:80
+kubectl port-forward svc/trustgate-data-plane -n trustgate 8081:80
+kubectl port-forward svc/trustgate-firewall -n trustgate 8082:80  # If firewall is enabled
+```
+
 ## Scaling Guidelines
 
 ### Horizontal Scaling
@@ -567,6 +619,20 @@ kubectl cp trustgate/$(kubectl get pod -n trustgate -l app=firewall -o jsonpath=
    kubectl get pvc -n trustgate
    ```
 
+6. **Test Script Generation Issues**
+   ```bash
+   # Check if LoadBalancer IPs are available
+   kubectl get svc -n trustgate
+   
+   # Verify template files exist
+   ls -la tests/test_rate_limiter.sh.template
+   ls -la tests/test_firewall.sh.template
+   
+   # Check generated test scripts
+   ls -la test_rate_limiter.sh
+   ls -la test_firewall.sh
+   ```
+
 ## Using the AI Firewall
 
 The AI Firewall component provides advanced content moderation and jailbreak protection. To use it:
@@ -599,6 +665,48 @@ The AI Firewall component provides advanced content moderation and jailbreak pro
        )
        return response.json()
    ```
+
+## Testing Features with Generated Scripts
+
+The deployment script automatically generates test scripts based on your actual deployment configuration. These scripts provide a hands-on way to explore TrustGate's features.
+
+### Rate Limiter Testing
+
+The `test_rate_limiter.sh` script demonstrates TrustGate's rate limiting capabilities:
+
+```bash
+./test_rate_limiter.sh
+```
+
+This script:
+- Creates a gateway with configurable rate limits
+- Sets up global limits (5 requests per 30 seconds)
+- Configures per-IP limits (3 requests per 30 seconds)
+- Makes multiple requests to demonstrate rate limiting behavior
+- Shows the Retry-After header when limits are exceeded
+- Tests with multiple API keys to demonstrate isolation
+
+### Firewall Testing
+
+If you enabled the firewall component, the `test_firewall.sh` script demonstrates content filtering:
+
+```bash
+./test_firewall.sh
+```
+
+This script:
+- Creates a gateway with the external validator plugin
+- Configures the plugin to use your deployed firewall service
+- Tests with known malicious content (prompt injection attempts)
+- Tests with safe content to show normal operation
+- Demonstrates direct API access to the firewall service
+- Shows how to integrate the firewall into your gateway rules
+
+These scripts are valuable for:
+- Verifying your deployment is working correctly
+- Understanding how to configure TrustGate features
+- Demonstrating capabilities to your team
+- Creating your own custom configurations
 
 ## Support and Community
 

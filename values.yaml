@@ -7,8 +7,21 @@ global:
   storageClass: ""
   deploymentType: shared  # shared or dedicated
   image:
-    registry: trustgate.registry.com
     pullPolicy: Always
+  env:
+    SERVER_BASE_DOMAIN: "gateway.neuraltrust.app"
+    SERVER_ADMIN_PORT: "8080"
+    SERVER_METRICS_PORT: "9090"
+    SERVER_PROXY_PORT: "8081"
+    DATABASE_HOST: "postgresql.default.svc.cluster.local"
+    DATABASE_PORT: "5432"
+    DATABASE_USER: "trustgate"
+    DATABASE_PASSWORD: "trustgate"
+    DATABASE_NAME: "trustgate"
+    REDIS_HOST: "redis.default.svc.cluster.local"
+    REDIS_PORT: "6379"
+    REDIS_PASSWORD: "trustgate"
+    REDIS_DB: "0"
     
 # Service Account configuration
 serviceAccount:
@@ -27,10 +40,11 @@ firewall:
   enabled: true
   replicas: 1
   image:
-    repository: neuraltrust/trustgate
+    repository: europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/firewall
+    imagePullSecrets: []
     tag: latest
   ports:
-    http: 8080
+    http: 8000
   podSecurityContext:
     fsGroup: 1001
   resources:
@@ -130,7 +144,6 @@ dataPlane:
     limits:
       cpu: 2000m
       memory: 4Gi
-  
   # Add ports configuration
   ports:
     http: 8081  
@@ -201,7 +214,7 @@ postgresql:
     repository: postgres
     tag: 17.2-alpine
   auth:
-    existingSecret: trustgate-shared-secrets
+    existingSecret: trustgate-secrets
     existingSecretPasswordKey: postgresql-password
     database: trustgate
     username: trustgate

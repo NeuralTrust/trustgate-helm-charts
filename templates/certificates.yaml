@@ -1,5 +1,4 @@
-{{- if .Values.certManager.enabled }}
-{{- if not .Values.certManager.customCertificates.enabled }}
+{{- if and .Values.certManager.enabled .Values.ingress.enabled }}
 # Control Plane Certificate
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -31,5 +30,4 @@ spec:
     kind: {{ .Values.certManager.issuerKind }}
   dnsNames:
     - {{ .Values.ingress.dataPlane.host | quote }}
-{{- end }} 
 {{- end }}

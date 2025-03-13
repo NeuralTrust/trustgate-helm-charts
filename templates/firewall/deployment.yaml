@@ -1,3 +1,4 @@
+{{- if .Values.firewall.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,10 +18,12 @@ spec:
         {{- include "trustgate.firewall.labels" . | nindent 8 }}
         component: firewall
     spec:
+      imagePullSecrets:
+        {{- toYaml .Values.firewall.image.imagePullSecrets | nindent 8 }}
       containers:
       - name: firewall
         image: "{{ .Values.firewall.image.repository }}:{{ .Values.firewall.image.tag }}"
-        args: ["proxy"]
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
         env:
         - name: HUGGINGFACE_TOKEN
           valueFrom:
@@ -38,9 +41,6 @@ spec:
           name: http
         resources:
           {{- toYaml .Values.firewall.resources | nindent 10 }}
-        volumeMounts:
-          - name: huggingface-cache
-            mountPath: "/root/.cache/huggingface"
         readinessProbe:
           httpGet:
             path: /health
@@ -53,23 +53,22 @@ spec:
             port: http
           initialDelaySeconds: 15
           periodSeconds: 20
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      volumes:
-        - name: huggingface-cache
-          persistentVolumeClaim:
-            claimName: "{{ .Release.Name }}-huggingface-cache"
-      {{- with .Values.firewall.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.firewall.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.firewall.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }} 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-firewall
+  labels:
+    {{- include "trustgate.firewall.labels" . | nindent 4 }}
+    component: firewall
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: {{ .Values.firewall.ports.http }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "trustgate.firewall.labels" . | nindent 4 }}
+    component: firewall 
+{{- end }}

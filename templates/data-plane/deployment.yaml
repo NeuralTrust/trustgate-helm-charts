@@ -21,49 +21,9 @@ spec:
       - name: data-plane
         image: "{{ .Values.dataPlane.image.repository }}:{{ .Values.dataPlane.image.tag }}"
         args: ["proxy"]
-        env:
-        # Core configuration
-        - name: LOG_LEVEL
-          value: {{ .Values.dataPlane.env.LOG_LEVEL | default "info" }}
-        - name: SERVER_BASE_DOMAIN
-          value: {{ .Values.dataPlane.env.SERVER_BASE_DOMAIN | default "example.com" }}
-        - name: SERVER_ADMIN_PORT
-          value: {{ .Values.dataPlane.env.SERVER_ADMIN_PORT | default "8080" | quote }}
-        - name: SERVER_METRICS_PORT
-          value: {{ .Values.dataPlane.env.SERVER_METRICS_PORT | default "9090" | quote }}
-        - name: SERVER_PROXY_PORT
-          value: {{ .Values.dataPlane.env.SERVER_PROXY_PORT | default "8081" | quote }}
-        
-        # Database configuration
-        - name: DATABASE_HOST
-          value: {{ include "trustgate.postgresql.host" . }}
-        - name: DATABASE_PORT
-          value: "5432"
-        - name: DATABASE_USER
-          value: {{ .Values.postgresql.auth.username }}
-        - name: DATABASE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "trustgate.postgresql.secretName" . }}
-              key: password
-        - name: DATABASE_NAME
-          value: {{ .Values.postgresql.auth.database }}
-        - name: DATABASE_SSL_MODE
-          value: {{ .Values.dataPlane.env.DATABASE_SSL_MODE | default "disable" }}
-        
-        # Redis configuration
-        - name: REDIS_HOST
-          value: {{ include "trustgate.redis.host" . }}-master
-        - name: REDIS_PORT
-          value: "6379"
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "trustgate.redis.secretName" . }}
-              key: redis-password
-        - name: REDIS_DB
-          value: "0"
-        
+        envFrom:
+        - secretRef:
+            name: {{ include "trustgate.fullname" . }}-env-vars
         imagePullPolicy: {{ .Values.global.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.dataPlane.ports.http }}
@@ -100,3 +60,22 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }} 
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-data-plane
+  labels:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: {{ .Values.dataPlane.ports.http }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane 
