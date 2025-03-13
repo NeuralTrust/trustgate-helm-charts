@@ -314,36 +314,6 @@ firewall:
     size: 20Gi
 ```
 
-### Network Flow Diagram
-
-```mermaid
-graph LR
-    Client --> Ingress
-    Ingress --> DataPlane
-    DataPlane --> Redis
-    Ingress --> ControlPlane
-    ControlPlane --> PostgreSQL
-    DataPlane --> ExternalAPIs[External AI APIs]
-    DataPlane --> Firewall[AI Firewall]
-```
-
-## Security Hardening
-
-### Network Policies
-
-The chart implements strict network policies:
-
-```mermaid
-graph TD
-    Internet --> Ingress
-    Ingress --> DataPlane[Data Plane]
-    DataPlane --> Redis
-    Ingress --> ControlPlane[Control Plane]
-    ControlPlane --> PostgreSQL
-    DataPlane --> Internet
-    DataPlane --> Firewall[AI Firewall]
-```
-
 ## Accessing TrustGate
 
 The deployment script will display the LoadBalancer IPs for accessing TrustGate services:
