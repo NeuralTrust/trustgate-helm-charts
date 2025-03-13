@@ -1,14 +1,13 @@
 # TrustGate Helm Chart
 
 <div align="center">
-<img src="docs/images/trustgate-logo.png" alt="TrustGate Logo" width="300"/>
+<img src="assets/ai-gateway.svg" alt="TrustGate Logo" width="300"/>
 
-*A Production-Grade AI Gateway for Kubernetes*
+*A Production-Grade TrustGate for Kubernetes*
 </div>
 
-## Architecture
+## Components
 
-![TrustGate Architecture](docs/images/architecture.png)
 
 TrustGate consists of several key components:
 
@@ -53,27 +52,14 @@ TrustGate consists of several key components:
 - cert-manager (optional, for TLS)
 - Prometheus + Grafana (optional, for monitoring)
 
-## Quick Start
-
-```bash
-# Add the repository
-helm repo add trustgate https://charts.neuraltrust.ai
-helm repo update
-
-# Install with basic configuration
-helm install trustgate trustgate/trustgate \
-  --namespace trustgate \
-  --create-namespace \
-  --set config.baseDomain=your-domain.com
-```
-
 ## Using the Deployment Script
 
 For a more guided installation experience, use our deployment script:
 
 ```bash
 # Download the deployment script
-curl -O https://raw.githubusercontent.com/NeuralTrust/TrustGate/main/trustgate-helm-charts/deploy-shared.sh
+git clone https://github.com/NeuralTrust/trustgate-helm-charts.git
+cd trustgate-helm-charts
 chmod +x deploy-shared.sh
 
 # Run the deployment script
@@ -124,10 +110,10 @@ This script will:
 
 ### Firewall Test (if enabled)
 
-If you enabled the firewall component, a `test_firewall.sh` script will be generated:
+If you enabled the firewall component, a `test_combined_security.sh` script will be generated:
 
 ```bash
-./test_firewall.sh
+./test_combined_security.sh
 ```
 
 This script will:
@@ -136,6 +122,7 @@ This script will:
 - Set up a service and routing rules with the firewall plugin
 - Test the gateway with both malicious and safe content
 - Demonstrate how the firewall blocks potentially harmful content
+- Demonstrate how the AI Gateway masks sensitive data
 
 ## Detailed Configuration
 
@@ -164,81 +151,6 @@ REDIS_HOST: "trustgate-redis-master"  # Redis hostname
 REDIS_PORT: "6379"  # Redis port
 REDIS_PASSWORD: "your-redis-password"  # Redis password
 REDIS_DB: "0"  # Redis database number
-```
-
-You can customize these values in your Helm installation:
-
-```bash
-helm install trustgate trustgate/trustgate \
-  --namespace trustgate \
-  --set controlPlane.env.LOG_LEVEL=debug \
-  --set dataPlane.env.SERVER_BASE_DOMAIN=api.company.com
-```
-
-Or in your values file:
-
-```yaml
-controlPlane:
-  env:
-    LOG_LEVEL: "debug"
-    SERVER_BASE_DOMAIN: "api.company.com"
-    
-dataPlane:
-  env:
-    LOG_LEVEL: "info"
-    SERVER_BASE_DOMAIN: "api.company.com"
-```
-
-### Environment Variables in Deployments
-
-The environment variables are set in the deployment manifests. Here's how they are configured in the Control Plane and Data Plane deployments:
-
-```yaml
-# Control Plane Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "trustgate.fullname" . }}-control-plane
-spec:
-  template:
-    spec:
-      containers:
-        - name: control-plane
-          env:
-            - name: LOG_LEVEL
-              value: {{ .Values.controlPlane.env.LOG_LEVEL | default "info" }}
-            - name: SERVER_BASE_DOMAIN
-              value: {{ .Values.controlPlane.env.SERVER_BASE_DOMAIN | default "example.com" }}
-            - name: SERVER_ADMIN_PORT
-              value: {{ .Values.controlPlane.env.SERVER_ADMIN_PORT | default "8080" | quote }}
-            - name: SERVER_METRICS_PORT
-              value: {{ .Values.controlPlane.env.SERVER_METRICS_PORT | default "9090" | quote }}
-            - name: DATABASE_HOST
-              value: {{ include "trustgate.postgresql.fullname" . }}
-            - name: DATABASE_PORT
-              value: "5432"
-            - name: DATABASE_USER
-              value: {{ .Values.postgresql.auth.username }}
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "trustgate.postgresql.secretName" . }}
-                  key: password
-            - name: DATABASE_NAME
-              value: {{ .Values.postgresql.auth.database }}
-            - name: DATABASE_SSL_MODE
-              value: {{ .Values.controlPlane.env.DATABASE_SSL_MODE | default "disable" }}
-            - name: REDIS_HOST
-              value: {{ include "trustgate.redis.fullname" . }}-master
-            - name: REDIS_PORT
-              value: "6379"
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "trustgate.redis.secretName" . }}
-                  key: redis-password
-            - name: REDIS_DB
-              value: "0"
 ```
 
 ### Managing Secrets
@@ -328,12 +240,6 @@ controlPlane:
     limits:
       cpu: 2000m
       memory: 4Gi
-  env:
-    LOG_LEVEL: "info"
-    SERVER_BASE_DOMAIN: "api.company.com"
-    SERVER_ADMIN_PORT: "8080"
-    SERVER_METRICS_PORT: "9090"
-    DATABASE_SSL_MODE: "require"
   ingress:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -353,11 +259,6 @@ dataPlane:
     limits:
       cpu: 4000m
       memory: 8Gi
-  env:
-    LOG_LEVEL: "info"
-    SERVER_BASE_DOMAIN: "api.company.com"
-    SERVER_PROXY_PORT: "8081"
-    SERVER_METRICS_PORT: "9090"
   ingress:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -420,7 +321,7 @@ graph LR
     Client --> Ingress
     Ingress --> DataPlane
     DataPlane --> Redis
-    DataPlane --> ControlPlane
+    Ingress --> ControlPlane
     ControlPlane --> PostgreSQL
     DataPlane --> ExternalAPIs[External AI APIs]
     DataPlane --> Firewall[AI Firewall]
@@ -437,48 +338,10 @@ graph TD
     Internet --> Ingress
     Ingress --> DataPlane[Data Plane]
     DataPlane --> Redis
-    DataPlane --> ControlPlane[Control Plane]
+    Ingress --> ControlPlane[Control Plane]
     ControlPlane --> PostgreSQL
     DataPlane --> Internet
     DataPlane --> Firewall[AI Firewall]
-```
-
-### Pod Security Context
-
-```yaml
-securityContext:
-  capabilities:
-    drop:
-    - ALL
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 1001
-```
-
-### Environment Variables and Secrets
-
-Sensitive information like database passwords and API keys are stored as Kubernetes secrets and injected as environment variables:
-
-```yaml
-# Example of how secrets are managed
-apiVersion: v1
-kind: Secret
-metadata:
-  name: trustgate-env-secrets
-  namespace: trustgate
-type: Opaque
-data:
-  DATABASE_PASSWORD: base64-encoded-password
-  REDIS_PASSWORD: base64-encoded-password
-  
----
-# Reference in deployment
-env:
-  - name: DATABASE_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: trustgate-env-secrets
-        key: DATABASE_PASSWORD
 ```
 
 ## Accessing TrustGate
@@ -532,43 +395,6 @@ Resource allocation guidelines:
 | Redis Master | 1000m | 2Gi | 2000m | 4Gi |
 | PostgreSQL | 1000m | 2Gi | 2000m | 4Gi |
 | AI Firewall | 2000m | 4Gi | 4000m | 8Gi |
-
-## Backup and Disaster Recovery
-
-### PostgreSQL Backup
-
-```bash
-# Create a backup
-kubectl exec -n trustgate \
-  $(kubectl get pod -n trustgate -l app=postgresql -o jsonpath='{.items[0].metadata.name}') \
-  -- pg_dump -U trustgate > backup.sql
-
-# Schedule regular backups
-kubectl apply -f backup-cronjob.yaml
-```
-
-### Redis Backup
-
-```bash
-# Enable Redis persistence
-helm upgrade trustgate trustgate/trustgate \
-  --set redis.persistence.enabled=true \
-  --set redis.persistence.size=50Gi
-```
-
-### Firewall Model Backup
-
-The AI Firewall component stores downloaded models in a persistent volume. To back up these models:
-
-```bash
-# Create a backup of the models
-kubectl exec -n trustgate \
-  $(kubectl get pod -n trustgate -l app=firewall -o jsonpath='{.items[0].metadata.name}') \
-  -- tar -czf /tmp/models-backup.tar.gz /app/models
-
-# Copy the backup to your local machine
-kubectl cp trustgate/$(kubectl get pod -n trustgate -l app=firewall -o jsonpath='{.items[0].metadata.name}'):/tmp/models-backup.tar.gz ./models-backup.tar.gz
-```
 
 ## Troubleshooting
 
@@ -632,81 +458,6 @@ kubectl cp trustgate/$(kubectl get pod -n trustgate -l app=firewall -o jsonpath=
    ls -la test_rate_limiter.sh
    ls -la test_firewall.sh
    ```
-
-## Using the AI Firewall
-
-The AI Firewall component provides advanced content moderation and jailbreak protection. To use it:
-
-1. **Get the JWT token**
-   ```bash
-   cat firewall_jwt_credentials.txt
-   ```
-
-2. **Make requests to the Firewall API**
-   ```bash
-   curl -X POST https://firewall.example.com/v1/firewall \
-     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"input": "Your text to scan"}'
-   ```
-
-3. **Integrate with your applications**
-   ```python
-   import requests
-   
-   def check_content(text):
-       response = requests.post(
-           "https://firewall.example.com/v1/firewall",
-           headers={
-               "Authorization": "Bearer YOUR_JWT_TOKEN",
-               "Content-Type": "application/json"
-           },
-           json={"input": text}
-       )
-       return response.json()
-   ```
-
-## Testing Features with Generated Scripts
-
-The deployment script automatically generates test scripts based on your actual deployment configuration. These scripts provide a hands-on way to explore TrustGate's features.
-
-### Rate Limiter Testing
-
-The `test_rate_limiter.sh` script demonstrates TrustGate's rate limiting capabilities:
-
-```bash
-./test_rate_limiter.sh
-```
-
-This script:
-- Creates a gateway with configurable rate limits
-- Sets up global limits (5 requests per 30 seconds)
-- Configures per-IP limits (3 requests per 30 seconds)
-- Makes multiple requests to demonstrate rate limiting behavior
-- Shows the Retry-After header when limits are exceeded
-- Tests with multiple API keys to demonstrate isolation
-
-### Firewall Testing
-
-If you enabled the firewall component, the `test_firewall.sh` script demonstrates content filtering:
-
-```bash
-./test_firewall.sh
-```
-
-This script:
-- Creates a gateway with the external validator plugin
-- Configures the plugin to use your deployed firewall service
-- Tests with known malicious content (prompt injection attempts)
-- Tests with safe content to show normal operation
-- Demonstrates direct API access to the firewall service
-- Shows how to integrate the firewall into your gateway rules
-
-These scripts are valuable for:
-- Verifying your deployment is working correctly
-- Understanding how to configure TrustGate features
-- Demonstrating capabilities to your team
-- Creating your own custom configurations
 
 ## Support and Community
 
