@@ -370,10 +370,9 @@ Resource allocation guidelines:
 
 ### Common Issues
 
-1. **Connection Timeouts**
+1. **Pod Startup Failures**
    ```bash
    kubectl get pods -n trustgate
-   kubectl logs -n trustgate <pod-name>
    kubectl describe pod -n trustgate <pod-name>
    ```
 
@@ -428,6 +427,24 @@ Resource allocation guidelines:
    ls -la test_rate_limiter.sh
    ls -la test_firewall.sh
    ```
+
+7. **AKS Load Balancer Delays**
+   
+   When deploying on Azure Kubernetes Service (AKS), the load balancer can sometimes take a long time to provision and assign external IPs. If you see the deployment script retrying to get the load balancer IP more than 5 times, it may be more efficient to:
+   
+   ```bash
+   # Cancel the current deployment with Ctrl+C
+   
+   # Check the status of services
+   kubectl get svc -n trustgate
+   
+   # Wait a few minutes for Azure to provision the load balancer
+   
+   # Run the deployment script again to resume the installation
+   ./deploy-shared.sh
+   ```
+   
+   This issue is specific to cloud providers like Azure where load balancer provisioning can take several minutes. The second deployment attempt will reuse the existing resources and continue from where it left off, which is often faster than waiting for the initial timeout.
 
 ## Support and Community
 
