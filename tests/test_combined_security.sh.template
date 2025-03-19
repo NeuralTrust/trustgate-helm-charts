@@ -41,7 +41,25 @@ GATEWAY_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Security Gateway",
-    "subdomain": "'$EXAMPLE_SUBDOMAIN'"
+    "subdomain": "'$EXAMPLE_SUBDOMAIN'",
+    "required_plugins": [{
+      "name": "rate_limiter",
+      "enabled": true,
+      "stage": "pre_request",
+      "priority": 1,
+      "settings": {
+        "limits": {
+            "global": {
+                "limit": 100,
+                "window": "1s"
+            }
+        },
+        "actions": {
+          "type": "reject",
+          "retry_after": "1"
+        }
+      }
+    }]
 }')
 
 # Check if the gateway was created successfully
@@ -181,21 +199,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "priority": 2,
             "settings": {
                 "similarity_threshold": 0.8,
-                "apply_all": true,
-                "rules": [
-                    {
-                        "pattern": "(?i)password=\\S+",
-                        "type": "regex",
-                        "mask_with": "[MASKED_PASSWORD]",
-                        "preserve_len": false
-                    },
-                    {
-                        "pattern": "(?i)(?:cvv|cvc|cid|security\s*code|card\s*verification)[\s-]*\d{3,4}",
-                        "type": "regex",
-                        "mask_with": "[MASKED_CVV]",
-                        "preserve_len": true
-                    }
-                ]
+                "apply_all": true
             }
         }
     ]
@@ -263,21 +267,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "priority": 2,
             "settings": {
                 "similarity_threshold": 0.8,
-                "apply_all": true,
-                "rules": [
-                    {
-                        "pattern": "(?i)password=\\S+",
-                        "type": "regex",
-                        "mask_with": "[MASKED_PASSWORD]",
-                        "preserve_len": false
-                    },
-                    {
-                        "pattern": "(?i)(?:cvv|cvc|cid|security\s*code|card\s*verification)[\s-]*\d{3,4}",
-                        "type": "regex",
-                        "mask_with": "[MASKED_CVV]",
-                        "preserve_len": true
-                    }
-                ]
+                "apply_all": true
             }
         }
     ]

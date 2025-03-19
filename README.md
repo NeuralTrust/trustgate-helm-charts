@@ -119,7 +119,10 @@ If you enabled the firewall component, a `test_combined_security.sh` script will
 This script will:
 - Create a gateway with firewall protection
 - Create an API key for authentication
-- Set up a service and routing rules with the firewall plugin
+- Set up a service and routing rules with the firewall plugin and rate limiter plugin
+- The firewall plugin has two options:
+  - Fast model: less accurate, faster (less 100ms latency)
+  - Large model: more accurate, slower (less 150ms latency)
 - Test the gateway with both malicious and safe content
 - Demonstrate how the firewall blocks potentially harmful content
 - Demonstrate how the AI Gateway masks sensitive data
@@ -329,42 +332,6 @@ kubectl port-forward svc/trustgate-control-plane -n trustgate 8080:80
 kubectl port-forward svc/trustgate-data-plane -n trustgate 8081:80
 kubectl port-forward svc/trustgate-firewall -n trustgate 8082:80  # If firewall is enabled
 ```
-
-## Scaling Guidelines
-
-### Horizontal Scaling
-
-1. **Data Plane**
-   - Scale based on RPS (Requests Per Second)
-   - Recommended: 1 replica per 1000 RPS
-   - Use HPA with custom metrics
-
-2. **Control Plane**
-   - Scale based on configuration changes
-   - Recommended: 3 replicas minimum
-   - Scale with cluster size
-
-3. **Redis**
-   - Scale read replicas with cache usage
-   - Monitor memory usage
-   - Consider Redis Cluster for >50GB data
-
-4. **AI Firewall**
-   - Scale based on scanning volume
-   - Recommended: 1 replica per 500 RPS
-   - Consider GPU nodes for higher performance
-
-### Vertical Scaling
-
-Resource allocation guidelines:
-
-| Component | CPU (Request) | Memory (Request) | CPU (Limit) | Memory (Limit) |
-|-----------|--------------|------------------|-------------|----------------|
-| Data Plane | 1000m | 2Gi | 2000m | 4Gi |
-| Control Plane | 500m | 1Gi | 1000m | 2Gi |
-| Redis Master | 1000m | 2Gi | 2000m | 4Gi |
-| PostgreSQL | 1000m | 2Gi | 2000m | 4Gi |
-| AI Firewall | 2000m | 4Gi | 4000m | 8Gi |
 
 ## Troubleshooting
 
