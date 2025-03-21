@@ -1,28 +1,28 @@
-{{- if .Values.firewall.enabled }}
+{{- if .Values.moderation.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "trustgate.fullname" . }}-firewall
+  name: {{ include "trustgate.fullname" . }}-moderation
   labels:
-    {{- include "trustgate.firewall.labels" . | nindent 4 }}
-    component: firewall
+    {{- include "trustgate.moderation.labels" . | nindent 4 }}
+    component: moderation
 spec:
-  replicas: {{ .Values.firewall.replicas }}
+  replicas: {{ .Values.moderation.replicas }}
   selector:
     matchLabels:
-      {{- include "trustgate.firewall.labels" . | nindent 6 }}
-      component: firewall
+      {{- include "trustgate.moderation.labels" . | nindent 6 }}
+      component: moderation
   template:
     metadata:
       labels:
-        {{- include "trustgate.firewall.labels" . | nindent 8 }}
-        component: firewall
+        {{- include "trustgate.moderation.labels" . | nindent 8 }}
+        component: moderation
     spec:
       imagePullSecrets:
         {{- toYaml .Values.global.image.imagePullSecrets | nindent 8 }}
       containers:
-      - name: firewall
-        image: "{{ .Values.firewall.image.repository }}:{{ .Values.firewall.image.tag }}"
+      - name: moderation
+        image: "{{ .Values.moderation.image.repository }}:{{ .Values.moderation.image.tag }}"
         imagePullPolicy: {{ .Values.global.image.pullPolicy }}
         env:
         - name: HUGGINGFACE_TOKEN
@@ -37,10 +37,10 @@ spec:
               key: JWT_SECRET
         imagePullPolicy: {{ .Values.global.image.pullPolicy }}
         ports:
-        - containerPort: {{ .Values.firewall.ports.http }}
+        - containerPort: {{ .Values.moderation.ports.http }}
           name: http
         resources:
-          {{- toYaml .Values.firewall.resources | nindent 10 }}
+          {{- toYaml .Values.moderation.resources | nindent 10 }}
         readinessProbe:
           httpGet:
             path: /health
@@ -57,18 +57,18 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-firewall
+  name: {{ .Release.Name }}-moderation
   labels:
-    {{- include "trustgate.firewall.labels" . | nindent 4 }}
-    component: firewall
+    {{- include "trustgate.moderation.labels" . | nindent 4 }}
+    component: moderation
 spec:
   type: LoadBalancer
   ports:
     - port: 80
-      targetPort: {{ .Values.firewall.ports.http }}
+      targetPort: {{ .Values.moderation.ports.http }}
       protocol: TCP
       name: http
   selector:
-    {{- include "trustgate.firewall.labels" . | nindent 4 }}
-    component: firewall 
+    {{- include "trustgate.moderation.labels" . | nindent 4 }}
+    component: moderation 
 {{- end }}

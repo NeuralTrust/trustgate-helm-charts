@@ -6,6 +6,8 @@ global:
   # If not set, will use the cluster's default StorageClass
   storageClass: ""
   deploymentType: shared  # shared or dedicated
+  huggingface:
+    apiKeySecret: "hf-api-key"
   image:
     pullPolicy: Always
   env:
@@ -41,7 +43,6 @@ firewall:
   replicas: 1
   image:
     repository: europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/firewall
-    imagePullSecrets: []
     tag: latest
   ports:
     http: 8000
@@ -49,11 +50,47 @@ firewall:
     fsGroup: 1001
   resources:
     requests:
-      cpu: 2000m
-      memory: 4Gi
-    limits:
       cpu: 4000m
       memory: 8Gi
+    limits:
+      cpu: 8000m
+      memory: 16Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - trustgate-firewall
+          topologyKey: kubernetes.io/hostname
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+moderation:
+  enabled: true
+  replicas: 1
+  image:
+    repository: europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/firewall
+    tag: latest
+  ports:
+    http: 8000
+  podSecurityContext:
+    fsGroup: 1001
+  resources:
+    requests:
+      cpu: 4000m
+      memory: 8Gi
+    limits:
+      cpu: 8000m
+      memory: 16Gi
   nodeSelector: {}
   tolerations: []
   affinity:
@@ -91,10 +128,10 @@ controlPlane:
   
   resources:
     requests:
-      cpu: 500m
+      cpu: 100m
       memory: 1Gi
     limits:
-      cpu: 1000m
+      cpu: 200m
       memory: 2Gi
       
   podDisruptionBudget:
@@ -139,11 +176,11 @@ dataPlane:
   
   resources:
     requests:
-      cpu: 1000m
-      memory: 2Gi
+      cpu: 5000m
+      memory: 8Gi
     limits:
-      cpu: 2000m
-      memory: 4Gi
+      cpu: 10000m
+      memory: 10Gi
   # Add ports configuration
   ports:
     http: 8081  

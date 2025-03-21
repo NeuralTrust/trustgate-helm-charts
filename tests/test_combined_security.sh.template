@@ -23,6 +23,8 @@ PROXY_IP="{{PROXY_IP}}"
 BASE_DOMAIN="{{SERVER_BASE_DOMAIN}}"
 FIREWALL_URL="http://{{FIREWALL_IP}}/v1"
 FIREWALL_TOKEN="{{JWT_TOKEN}}"
+MODERATION_URL="http://{{MODERATION_IP}}/v1"
+MODERATION_TOKEN="{{JWT_TOKEN}}"
 SERVICE_NAME="security-service-$(date +%s)"
 UPSTREAM_NAME="security-upstream-$(date +%s)"
 
@@ -193,6 +195,35 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             }
         },
         {
+            "name": "external_api",
+            "enabled": true,
+            "stage": "pre_request",
+            "priority": 1,
+            "settings": {
+                "endpoint": "'$MODERATION_URL'/moderation",
+                "method": "POST",
+                "field_maps": [
+                    {
+                        "source": "input",
+                        "destination": "input"
+                    }
+                ],
+                "headers": {
+                    "Authorization": "Bearer '$MODERATION_TOKEN'"
+                },
+                "timeout": "5s",
+                "conditions": [
+                    {
+                        "field": "flagged",
+                        "operator": "eq",
+                        "value": true,
+                        "stop_flow": true,
+                        "message": "Request was flagged as malicious"
+                    }
+                ]
+            }
+        },
+        {
             "name": "data_masking",
             "enabled": true,
             "stage": "pre_request",
@@ -200,6 +231,43 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "settings": {
                 "similarity_threshold": 0.8,
                 "apply_all": true
+            }
+        },
+        {
+          "name": "injection_protection",
+          "enabled": true,
+          "stage": "pre_request",
+          "priority": 1,
+          "settings": {
+            "predefined_injections": [
+                {
+                    "type": "all",
+                    "enabled": true
+                }
+            ],
+            "custom_injections": [
+                {
+                    "name": "custom_sql",
+                    "pattern": "(?i)\\b(select|union|having)\\b",
+                    "content_to_check": "all"
+                }
+            ],
+            "content_to_check": ["headers", "path_and_query", "body"],
+            "action": "block",
+            "status_code": 400,
+            "error_message": "Potential security threat detected"
+          }
+        },
+        {
+            "name": "request_size_limiter",
+            "enabled": true,
+            "stage": "pre_request",
+            "priority": 1,
+            "settings": {
+                "allowed_payload_size": 10,
+                "size_unit": "kilobytes",
+                "max_chars_per_request": 1000,
+                "require_content_length": false
             }
         }
     ]
@@ -261,6 +329,35 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             }
         },
         {
+            "name": "external_api",
+            "enabled": true,
+            "stage": "pre_request",
+            "priority": 1,
+            "settings": {
+                "endpoint": "'$MODERATION_URL'/moderation",
+                "method": "POST",
+                "field_maps": [
+                    {
+                        "source": "input",
+                        "destination": "input"
+                    }
+                ],
+                "headers": {
+                    "Authorization": "Bearer '$MODERATION_TOKEN'"
+                },
+                "timeout": "5s",
+                "conditions": [
+                    {
+                        "field": "flagged",
+                        "operator": "eq",
+                        "value": true,
+                        "stop_flow": true,
+                        "message": "Request was flagged as malicious"
+                    }
+                ]
+            }
+        },
+        {
             "name": "data_masking",
             "enabled": true,
             "stage": "pre_request",
@@ -268,6 +365,43 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "settings": {
                 "similarity_threshold": 0.8,
                 "apply_all": true
+            }
+        },
+        {
+          "name": "injection_protection",
+          "enabled": true,
+          "stage": "pre_request",
+          "priority": 1,
+          "settings": {
+            "predefined_injections": [
+                {
+                    "type": "all",
+                    "enabled": true
+                }
+            ],
+            "custom_injections": [
+                {
+                    "name": "custom_sql",
+                    "pattern": "(?i)\\b(select|union|having)\\b",
+                    "content_to_check": "all"
+                }
+            ],
+            "content_to_check": ["headers", "path_and_query", "body"],
+            "action": "block",
+            "status_code": 400,
+            "error_message": "Potential security threat detected"
+          }
+        },
+        {
+            "name": "request_size_limiter",
+            "enabled": true,
+            "stage": "pre_request",
+            "priority": 1,
+            "settings": {
+                "allowed_payload_size": 10,
+                "size_unit": "kilobytes",
+                "max_chars_per_request": 1000,
+                "require_content_length": false
             }
         }
     ]

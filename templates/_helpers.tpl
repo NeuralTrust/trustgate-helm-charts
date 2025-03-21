@@ -106,4 +106,31 @@ Firewall labels
 {{- define "trustgate.firewall.labels" -}}
 {{ include "trustgate.labels" . }}
 app.kubernetes.io/component: firewall
+{{- end }}
+
+{{/*
+Common labels for moderation
+*/}}
+{{- define "trustgate.moderation.labels" -}}
+{{ include "trustgate.labels" . }}
+app.kubernetes.io/component: moderation
+{{- end }}
+
+{{/*
+Selector labels for moderation
+*/}}
+{{- define "trustgate.moderation.selectorLabels" -}}
+{{ include "trustgate.selectorLabels" . }}
+app.kubernetes.io/component: moderation
+{{- end }}
+
+{{/*
+Create the name of the service account to use for moderation
+*/}}
+{{- define "trustgate.moderation.serviceAccountName" -}}
+{{- if .Values.moderation.serviceAccount.create }}
+{{- default (printf "%s-moderation" (include "trustgate.fullname" .)) .Values.moderation.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.moderation.serviceAccount.name }}
+{{- end }}
 {{- end }} 

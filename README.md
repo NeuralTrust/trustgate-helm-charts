@@ -52,7 +52,7 @@ TrustGate consists of several key components:
 - cert-manager (optional, for TLS)
 - Prometheus + Grafana (optional, for monitoring)
 
-## Using the Deployment Script
+## Quick Start
 
 For a more guided installation experience, use our deployment script:
 
@@ -74,13 +74,13 @@ The script will:
 - Generate test scripts with the actual deployment values
 - Provide access information after deployment
 
-### Enabling the AI Firewall (Enterprise Feature)
+### Enabling the AI Firewall and Moderation (Enterprise Feature)
 
-The AI Firewall component provides advanced content moderation and jailbreak protection:
+The AI Firewall and Moderation component provides advanced content moderation and jailbreak protection:
 
 ```bash
 # Enable the firewall during installation
-ENABLE_FIREWALL=true ./deploy-shared.sh
+ENABLE_FIREWALL=true ENABLE_MODERATION=true ./deploy-shared.sh
 ```
 
 You'll need:
@@ -108,7 +108,7 @@ This script will:
 - Make multiple requests to demonstrate rate limiting in action
 - Show how rate limits are applied globally, per IP, and per API key
 
-### Firewall Test (if enabled)
+### Firewall Test (if enabled) and Moderation Test (if enabled)
 
 If you enabled the firewall component, a `test_combined_security.sh` script will be generated:
 

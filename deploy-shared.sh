@@ -39,7 +39,7 @@ else
 fi
 
 # Check if firewall should be enabled
-if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
+if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] || [ -n "$ENABLE_MODERATION" ] && [ "$ENABLE_MODERATION" = "true" ]; then
   echo -e "${GREEN}Firewall component will be enabled${NC}"
   
   # Check for Google service account credentials
@@ -87,10 +87,24 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
     fi
   fi
   
-  FIREWALL_ENABLED="--set firewall.enabled=true"
+  if [ -n "$ENABLE_MODERATION" ] && [ "$ENABLE_MODERATION" = "true" ]; then
+    echo -e "${GREEN}Moderation component will be enabled${NC}"
+    MODERATION_ENABLED="--set moderation.enabled=true"
+  else
+    echo -e "${YELLOW}Moderation component will be disabled${NC}"
+    MODERATION_ENABLED="--set moderation.enabled=false"
+  fi
+  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
+    echo -e "${GREEN}Firewall component will be enabled${NC}"
+    FIREWALL_ENABLED="--set firewall.enabled=true"
+  else
+    echo -e "${YELLOW}Firewall component will be disabled${NC}"
+    FIREWALL_ENABLED="--set firewall.enabled=false"
+  fi
 else
   echo -e "${YELLOW}Firewall component will be disabled${NC}"
   FIREWALL_ENABLED="--set firewall.enabled=false"
+  MODERATION_ENABLED="--set moderation.enabled=false"
 fi
 
 # Check if Prometheus Operator CRDs are installed
@@ -149,7 +163,7 @@ else
 fi
 
 # Set default values for environment variables if not set
-LOG_LEVEL=${LOG_LEVEL:-"debug"}
+LOG_LEVEL=${LOG_LEVEL:-"info"}
 SERVER_BASE_DOMAIN=${SERVER_BASE_DOMAIN:-"example.com"}
 SERVER_ADMIN_PORT=${SERVER_ADMIN_PORT:-"8080"}
 SERVER_METRICS_PORT=${SERVER_METRICS_PORT:-"9090"}
@@ -180,7 +194,7 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
     --namespace=$NAMESPACE \
     --dry-run=client -o yaml | kubectl apply -f -
   
-  REGISTRY_CREDS="--set firewall.image.imagePullSecrets[0].name=gcp-registry-creds"
+  REGISTRY_CREDS="--set global.image.imagePullSecrets[0].name=gcp-registry-creds"
   
   # Create Hugging Face API key secret
   HF_KEY=${HUGGINGFACE_TOKEN:-$HF_API_KEY}
@@ -190,7 +204,7 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
     --namespace=$NAMESPACE \
     --dry-run=client -o yaml | kubectl apply -f -
   
-  HUGGINGFACE_SECRET="--set firewall.huggingface.apiKeySecret=hf-api-key"
+  HUGGINGFACE_SECRET="--set global.huggingface.apiKeySecret=hf-api-key"
   
   # Generate JWT secret for firewall API
   if [ -f .secret/firewall_jwt_credentials.txt ]; then
@@ -254,8 +268,6 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
     --from-literal=JWT_SECRET=$JWT_SECRET \
     --namespace=$NAMESPACE \
     --dry-run=client -o yaml | kubectl apply -f -
-  
-  JWT_SECRET_CONFIG="--set firewall.auth.jwtSecret=firewall-jwt-secret"
   
   # Save the token to be displayed in NOTES.txt
   JWT_TOKEN_FOR_NOTES=$JWT_TOKEN
@@ -332,6 +344,7 @@ RETRY_COUNT=0
 ADMIN_IP=""
 PROXY_IP=""
 FIREWALL_IP=""
+MODERATION_IP=""
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   ADMIN_IP=$(kubectl get svc ${RELEASE_NAME}-control-plane -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
@@ -340,7 +353,10 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
     FIREWALL_IP=$(kubectl get svc ${RELEASE_NAME}-firewall -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
   fi
-  
+  if [ -n "$ENABLE_MODERATION" ] && [ "$ENABLE_MODERATION" = "true" ]; then
+    MODERATION_IP=$(kubectl get svc ${RELEASE_NAME}-moderation -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+  fi
+
   # Check if we have all required IPs
   if [ -n "$ADMIN_IP" ] && [ -n "$PROXY_IP" ]; then
     if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] && [ -z "$FIREWALL_IP" ]; then
@@ -373,16 +389,15 @@ if [ -n "$ADMIN_IP" ] && [ -n "$PROXY_IP" ]; then
   if [ -n "$FIREWALL_IP" ]; then
     echo -e "Firewall API: ${FIREWALL_IP}"
   fi
+  if [ -n "$MODERATION_IP" ]; then
+    echo -e "Moderation API: ${MODERATION_IP}"
+  fi
   
   # Save endpoints to a file for future use
   echo -e "\n${GREEN}Saving endpoints to trustgate_endpoints.txt${NC}"
   echo "ADMIN_URL=http://${ADMIN_IP}/api/v1" > .secret/trustgate_endpoints.txt
   echo "PROXY_URL=http://${PROXY_IP}" >> .secret/trustgate_endpoints.txt
   echo "BASE_DOMAIN=${SERVER_BASE_DOMAIN}" >> .secret/trustgate_endpoints.txt
-  
-  if [ -n "$FIREWALL_IP" ]; then
-    echo "FIREWALL_URL=http://${FIREWALL_IP}/v1" >> .secret/trustgate_endpoints.txt
-  fi
   
   # Generate the rate limiter test script
   echo -e "\n${GREEN}Generating test script...${NC}"
@@ -413,7 +428,7 @@ if [ -n "$ADMIN_IP" ] && [ -n "$PROXY_IP" ]; then
   fi
   
   # Generate the firewall test script if firewall is enabled and its IP is available
-  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] && [ -n "$FIREWALL_IP" ]; then
+  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] && [ -n "$FIREWALL_IP" ] && [ -n "$MODERATION_IP" ]; then
     echo -e "\n${GREEN}Generating firewall test script...${NC}"
     
     FIREWALL_TEST_SCRIPT="test_combined_security.sh"
@@ -424,6 +439,7 @@ if [ -n "$ADMIN_IP" ] && [ -n "$PROXY_IP" ]; then
       sed -e "s/{{ADMIN_IP}}/$ADMIN_IP/g" \
           -e "s/{{PROXY_IP}}/$PROXY_IP/g" \
           -e "s/{{FIREWALL_IP}}/$FIREWALL_IP/g" \
+          -e "s/{{MODERATION_IP}}/$MODERATION_IP/g" \
           -e "s/{{SERVER_BASE_DOMAIN}}/$SERVER_BASE_DOMAIN/g" \
           -e "s/{{JWT_TOKEN}}/$JWT_TOKEN_FOR_NOTES/g" \
           "$FIREWALL_TEMPLATE_FILE" > "$FIREWALL_TEST_SCRIPT"
