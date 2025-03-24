@@ -164,6 +164,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "enabled": true,
             "stage": "pre_request",
             "priority": 1,
+            "parallel": true,
             "settings": {
                 "endpoint": "'$FIREWALL_URL'/firewall",
                 "query_params": [
@@ -199,6 +200,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "enabled": true,
             "stage": "pre_request",
             "priority": 1,
+            "parallel": true,
             "settings": {
                 "endpoint": "'$MODERATION_URL'/moderation",
                 "method": "POST",
@@ -227,7 +229,8 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "name": "data_masking",
             "enabled": true,
             "stage": "pre_request",
-            "priority": 2,
+            "priority": 1,
+            "parallel": true,
             "settings": {
                 "similarity_threshold": 0.8,
                 "apply_all": true
@@ -238,6 +241,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
           "enabled": true,
           "stage": "pre_request",
           "priority": 1,
+          "parallel": true,
           "settings": {
             "predefined_injections": [
                 {
@@ -263,6 +267,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "enabled": true,
             "stage": "pre_request",
             "priority": 1,
+            "parallel": true,
             "settings": {
                 "allowed_payload_size": 10,
                 "size_unit": "kilobytes",
@@ -298,6 +303,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "enabled": true,
             "stage": "pre_request",
             "priority": 1,
+            "parallel": true,
             "settings": {
                 "endpoint": "'$FIREWALL_URL'/firewall",
                 "query_params": [
@@ -333,6 +339,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "enabled": true,
             "stage": "pre_request",
             "priority": 1,
+            "parallel": true,
             "settings": {
                 "endpoint": "'$MODERATION_URL'/moderation",
                 "method": "POST",
@@ -361,7 +368,8 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "name": "data_masking",
             "enabled": true,
             "stage": "pre_request",
-            "priority": 2,
+            "priority": 1,
+            "parallel": true,
             "settings": {
                 "similarity_threshold": 0.8,
                 "apply_all": true
@@ -372,6 +380,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
           "enabled": true,
           "stage": "pre_request",
           "priority": 1,
+          "parallel": true,
           "settings": {
             "predefined_injections": [
                 {
@@ -397,6 +406,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             "enabled": true,
             "stage": "pre_request",
             "priority": 1,
+            "parallel": true,
             "settings": {
                 "allowed_payload_size": 10,
                 "size_unit": "kilobytes",
