@@ -44,6 +44,26 @@ TrustGate consists of several key components:
    - Toxicity filtering
    - Runs as a separate service with its own API
 
+## Resource Requirements
+
+| Component | CPU Requests | CPU Limits | Memory Requests | Memory Limits | Storage |
+|-----------|--------------|------------|-----------------|---------------|----------|
+| Data Plane | 4000m | 8000m | 8Gi | 16Gi | - |
+| Control Plane | 100m | 200m | 1Gi | 2Gi | - |
+| AI Firewall | 4000m | 8000m | 8Gi | 16Gi | - |
+| Moderation | 4000m | 8000m | 8Gi | 16Gi | - |
+| Redis | 500m | 1000m | 1Gi | 2Gi | 10Gi |
+| PostgreSQL* | 500m | 1000m | 1Gi | 2Gi | 10Gi |
+
+> **Note**: Resource requirements can be adjusted based on your workload. These are recommended values for production deployments.
+
+> **Important**: For production deployments, we strongly recommend using a managed PostgreSQL service (like AWS RDS, GCP Cloud SQL, or Azure Database) instead of running PostgreSQL in the cluster. This provides:
+> - Better reliability and data durability
+> - Automatic backups and point-in-time recovery
+> - Simplified maintenance and updates
+> - Built-in high availability
+> - Independent scaling of database resources
+
 ## Prerequisites
 
 - Kubernetes 1.19+

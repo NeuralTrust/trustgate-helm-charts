@@ -218,7 +218,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
                         "operator": "eq",
                         "value": true,
                         "stop_flow": true,
-                        "message": "Request was flagged as malicious"
+                        "message": "Request was blocked by the moderation service"
                     }
                 ]
             }
@@ -254,7 +254,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             ],
             "content_to_check": ["headers", "path_and_query", "body"],
             "action": "block",
-            "status_code": 400,
+            "status_code": 429,
             "error_message": "Potential security threat detected"
           }
         },
@@ -352,7 +352,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
                         "operator": "eq",
                         "value": true,
                         "stop_flow": true,
-                        "message": "Request was flagged as malicious"
+                        "message": "Request was blocked by the moderation service"
                     }
                 ]
             }
@@ -388,7 +388,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
             ],
             "content_to_check": ["headers", "path_and_query", "body"],
             "action": "block",
-            "status_code": 400,
+            "status_code": 429,
             "error_message": "Potential security threat detected"
           }
         },
