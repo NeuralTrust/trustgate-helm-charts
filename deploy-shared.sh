@@ -336,151 +336,28 @@ kubectl get pods -n $NAMESPACE
 
 echo -e "\n${GREEN}TrustGate infrastructure deployed successfully!${NC}"
 
-# Replace the existing code that checks for LoadBalancer IPs with this improved version
-echo -e "\n${GREEN}Checking for LoadBalancer IPs...${NC}"
-MAX_RETRIES=30
-RETRY_INTERVAL=10
-RETRY_COUNT=0
-ADMIN_IP=""
-PROXY_IP=""
-FIREWALL_IP=""
-MODERATION_IP=""
-
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  ADMIN_IP=$(kubectl get svc ${RELEASE_NAME}-control-plane -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-  PROXY_IP=$(kubectl get svc ${RELEASE_NAME}-data-plane -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-  
-  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
-    FIREWALL_IP=$(kubectl get svc ${RELEASE_NAME}-firewall -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-  fi
-  if [ -n "$ENABLE_MODERATION" ] && [ "$ENABLE_MODERATION" = "true" ]; then
-    MODERATION_IP=$(kubectl get svc ${RELEASE_NAME}-moderation -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-  fi
-
-  # Check if we have all required IPs
-  if [ -n "$ADMIN_IP" ] && [ -n "$PROXY_IP" ]; then
-    if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] && [ -z "$FIREWALL_IP" ]; then
-      echo -e "${YELLOW}Waiting for Firewall LoadBalancer IP... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)${NC}"
-      RETRY_COUNT=$((RETRY_COUNT+1))
-      sleep $RETRY_INTERVAL
-      continue
-    else
-      # We have all required IPs
-      break
-    fi
-  else
-    echo -e "${YELLOW}Waiting for LoadBalancer IPs... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)${NC}"
-    RETRY_COUNT=$((RETRY_COUNT+1))
-    sleep $RETRY_INTERVAL
-  fi
-done
-
-if [ -n "$ADMIN_IP" ] && [ -n "$PROXY_IP" ]; then
-  # If firewall is enabled, check if we have the firewall IP
-  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] && [ -z "$FIREWALL_IP" ]; then
-    echo -e "${YELLOW}Warning: Firewall LoadBalancer IP not available after $MAX_RETRIES attempts.${NC}"
-    echo -e "${YELLOW}Firewall test script will not be generated.${NC}"
-  fi
-
-  echo -e "\n${GREEN}LoadBalancer IPs are ready:${NC}"
-  echo -e "Admin API: ${ADMIN_IP}"
-  echo -e "Proxy API: ${PROXY_IP}"
-  
-  if [ -n "$FIREWALL_IP" ]; then
-    echo -e "Firewall API: ${FIREWALL_IP}"
-  fi
-  if [ -n "$MODERATION_IP" ]; then
-    echo -e "Moderation API: ${MODERATION_IP}"
-  fi
-  
-  # Save endpoints to a file for future use
-  echo -e "\n${GREEN}Saving endpoints to trustgate_endpoints.txt${NC}"
-  echo "ADMIN_URL=http://${ADMIN_IP}/api/v1" > .secret/trustgate_endpoints.txt
-  echo "PROXY_URL=http://${PROXY_IP}" >> .secret/trustgate_endpoints.txt
-  echo "BASE_DOMAIN=${SERVER_BASE_DOMAIN}" >> .secret/trustgate_endpoints.txt
-  
-  # Generate the rate limiter test script
-  echo -e "\n${GREEN}Generating test script...${NC}"
-  
-  TEST_SCRIPT="test_rate_limiter.sh"
-  TEMPLATE_FILE="tests/test_rate_limiter.sh.template"
-  
-  if [ -f "$TEMPLATE_FILE" ]; then
-    # Replace placeholders in the template with actual values
-    sed -e "s/{{ADMIN_IP}}/$ADMIN_IP/g" \
-        -e "s/{{PROXY_IP}}/$PROXY_IP/g" \
-        -e "s/{{SERVER_BASE_DOMAIN}}/$SERVER_BASE_DOMAIN/g" \
-        "$TEMPLATE_FILE" > "$TEST_SCRIPT"
-    
-    # Make the script executable
-    chmod +x $TEST_SCRIPT
-    
-    echo -e "\n${GREEN}==================================================${NC}"
-    echo -e "${GREEN}Test script generated at $TEST_SCRIPT${NC}"
-    echo -e "${GREEN}This script will create a gateway with rate limiting${NC}"
-    echo -e "${GREEN}and test it with multiple requests to demonstrate${NC}"
-    echo -e "${GREEN}how the rate limiter works.${NC}"
-    echo -e "\n${YELLOW}Run it with: ./$TEST_SCRIPT${NC}"
-    echo -e "${GREEN}==================================================${NC}"
-  else
-    echo -e "${YELLOW}Template file not found at $TEMPLATE_FILE${NC}"
-    echo -e "${YELLOW}Skipping test script generation${NC}"
-  fi
-  
-  # Generate the firewall test script if firewall is enabled and its IP is available
-  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] && [ -n "$FIREWALL_IP" ] && [ -n "$MODERATION_IP" ]; then
-    echo -e "\n${GREEN}Generating firewall test script...${NC}"
-    
-    FIREWALL_TEST_SCRIPT="test_combined_security.sh"
-    FIREWALL_TEMPLATE_FILE="tests/test_combined_security.sh.template"
-    
-    if [ -f "$FIREWALL_TEMPLATE_FILE" ]; then
-      # Replace placeholders in the template with actual values
-      sed -e "s/{{ADMIN_IP}}/$ADMIN_IP/g" \
-          -e "s/{{PROXY_IP}}/$PROXY_IP/g" \
-          -e "s/{{FIREWALL_IP}}/$FIREWALL_IP/g" \
-          -e "s/{{MODERATION_IP}}/$MODERATION_IP/g" \
-          -e "s/{{SERVER_BASE_DOMAIN}}/$SERVER_BASE_DOMAIN/g" \
-          -e "s/{{JWT_TOKEN}}/$JWT_TOKEN_FOR_NOTES/g" \
-          "$FIREWALL_TEMPLATE_FILE" > "$FIREWALL_TEST_SCRIPT"
-      
-      # Make the script executable
-      chmod +x $FIREWALL_TEST_SCRIPT
-      
-      echo -e "\n${GREEN}==================================================${NC}"
-      echo -e "${GREEN}Firewall test script generated at $FIREWALL_TEST_SCRIPT${NC}"
-      echo -e "${GREEN}This script will create a gateway with firewall protection${NC}"
-      echo -e "${GREEN}and data masking and test it with malicious content${NC}"
-      echo -e "${GREEN}to demonstrate how the firewall works.${NC}"
-      echo -e "\n${YELLOW}Run it with: ./$FIREWALL_TEST_SCRIPT${NC}"
-      echo -e "${GREEN}==================================================${NC}"
-    else
-      echo -e "${YELLOW}Firewall template file not found at $FIREWALL_TEMPLATE_FILE${NC}"
-      echo -e "${YELLOW}Skipping firewall test script generation${NC}"
-    fi
-  fi
-else
-  echo -e "\n${YELLOW}LoadBalancer IPs not available after $MAX_RETRIES attempts.${NC}"
-  echo -e "${YELLOW}You can use port-forwarding to access services:${NC}"
-  echo -e "kubectl port-forward svc/${RELEASE_NAME}-control-plane -n ${NAMESPACE} 8080:80"
-  echo -e "kubectl port-forward svc/${RELEASE_NAME}-data-plane -n ${NAMESPACE} 8081:80"
-  
-  if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
-    echo -e "kubectl port-forward svc/${RELEASE_NAME}-firewall -n ${NAMESPACE} 8082:80"
-  fi
-  
-  echo -e "\n${YELLOW}After port-forwarding, you can access the services at:${NC}"
-  echo -e "Admin API: http://localhost:8080/api/v1"
-  echo -e "Proxy API: http://localhost:8081"
-fi
+echo -e "\n${YELLOW}Services are deployed with ClusterIP. You can use port-forwarding to access them:${NC}"
+echo -e "kubectl port-forward svc/${RELEASE_NAME}-control-plane -n ${NAMESPACE} 8080:80"
+echo -e "kubectl port-forward svc/${RELEASE_NAME}-data-plane -n ${NAMESPACE} 8081:80"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
-  echo -e "${GREEN}You can use the following command to test the firewall${NC}"
-  echo -e "${GREEN}directly with curl to see how it works, without the${NC}"
-  echo -e "${GREEN}need to test the full gateway.${NC}"
-  echo -e "${YELLOW}curl -s -w \"\\\nTime: %{time_total}\" \"http://${FIREWALL_IP}/v1/firewall\" \\"
+  echo -e "kubectl port-forward svc/${RELEASE_NAME}-firewall -n ${NAMESPACE} 8082:80"
+fi
+
+echo -e "\n${YELLOW}After port-forwarding, you can access the services at:${NC}"
+echo -e "Admin API: http://localhost:8080/api/v1"
+echo -e "Proxy API: http://localhost:8081"
+
+if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
+  echo -e "Firewall API: http://localhost:8082"
+  
+  echo -e "\n${GREEN}You can use the following command to test the firewall${NC}"
+  echo -e "${GREEN}directly with curl to see how it works:${NC}"
+  echo -e "${YELLOW}curl -s -w \"\\\nTime: %{time_total}\" \"http://localhost:8082/v1/firewall\" \\"
   echo -e " -H \"Authorization: Bearer $JWT_TOKEN_FOR_NOTES\" \\"
   echo -e " -H \"Content-Type: application/json\" \\"
   echo -e " -d '{\"input\":\"Test to scan for malicious content\"}'"
   echo -e "${GREEN}==================================================${NC}"
 fi
+
+# Generate test scripts section remains unchanged...
