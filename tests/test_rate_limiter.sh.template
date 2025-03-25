@@ -17,8 +17,8 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Pre-configured endpoints from deployment
-ADMIN_URL="http://{{ADMIN_IP}}/api/v1"
-PROXY_URL="http://{{PROXY_IP}}"
+ADMIN_URL="http://localhost:8080/api/v1"  
+PROXY_URL="http://localhost:8081"
 BASE_DOMAIN="{{SERVER_BASE_DOMAIN}}"
 SERVICE_NAME="rate-limiter-service-$(date +%s)"
 UPSTREAM_NAME="rate-limiter-upstream-$(date +%s)"

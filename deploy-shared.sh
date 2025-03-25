@@ -40,8 +40,6 @@ fi
 
 # Check if firewall should be enabled
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ] || [ -n "$ENABLE_MODERATION" ] && [ "$ENABLE_MODERATION" = "true" ]; then
-  echo -e "${GREEN}Firewall component will be enabled${NC}"
-  
   # Check for Google service account credentials
   if [ -z "$GOOGLE_APPLICATION_CREDENTIALS" ] || [ ! -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
     echo -e "${YELLOW}Google service account credentials not found or invalid${NC}"
@@ -321,6 +319,7 @@ helm upgrade --install $RELEASE_NAME ./ \
   $MONITORING_ENABLED \
   $CERT_MANAGER_ENABLED \
   $FIREWALL_ENABLED \
+  $MODERATION_ENABLED \
   $REGISTRY_CREDS
 
 # Wait for pods to be ready
@@ -345,8 +344,8 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
 fi
 
 echo -e "\n${YELLOW}After port-forwarding, you can access the services at:${NC}"
-echo -e "Admin API: http://localhost:8080/api/v1"
-echo -e "Proxy API: http://localhost:8081"
+echo -e "Control Plane API: http://localhost:8080/api/v1"
+echo -e "Data Plane API: http://localhost:8081"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   echo -e "Firewall API: http://localhost:8082"
@@ -360,4 +359,57 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   echo -e "${GREEN}==================================================${NC}"
 fi
 
-# Generate test scripts section remains unchanged...
+# Generate the rate limiter test script
+echo -e "\n${GREEN}Generating test script...${NC}"
+
+TEST_SCRIPT="test_rate_limiter.sh"
+TEMPLATE_FILE="tests/test_rate_limiter.sh.template"
+
+if [ -f "$TEMPLATE_FILE" ]; then
+  # Replace placeholders in the template with actual values
+  sed -e "s/{{SERVER_BASE_DOMAIN}}/$SERVER_BASE_DOMAIN/g" \
+      "$TEMPLATE_FILE" > "$TEST_SCRIPT"
+  
+  # Make the script executable
+  chmod +x $TEST_SCRIPT
+  
+  echo -e "\n${GREEN}==================================================${NC}"
+  echo -e "${GREEN}Test script generated at $TEST_SCRIPT${NC}"
+  echo -e "${GREEN}This script will create a gateway with rate limiting${NC}"
+  echo -e "${GREEN}and test it with multiple requests to demonstrate${NC}"
+  echo -e "${GREEN}how the rate limiter works.${NC}"
+  echo -e "\n${YELLOW}Run it with: ./$TEST_SCRIPT${NC}"
+  echo -e "${GREEN}==================================================${NC}"
+else
+  echo -e "${YELLOW}Template file not found at $TEMPLATE_FILE${NC}"
+  echo -e "${YELLOW}Skipping test script generation${NC}"
+fi
+
+# Generate the firewall test script if firewall is enabled and its IP is available
+if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
+  echo -e "\n${GREEN}Generating firewall test script...${NC}"
+  
+  FIREWALL_TEST_SCRIPT="test_combined_security.sh"
+  FIREWALL_TEMPLATE_FILE="tests/test_combined_security.sh.template"
+  
+  if [ -f "$FIREWALL_TEMPLATE_FILE" ]; then
+    # Replace placeholders in the template with actual values
+    sed -e "s/{{SERVER_BASE_DOMAIN}}/$SERVER_BASE_DOMAIN/g" \
+        -e "s/{{JWT_TOKEN}}/$JWT_TOKEN_FOR_NOTES/g" \
+        "$FIREWALL_TEMPLATE_FILE" > "$FIREWALL_TEST_SCRIPT"
+    
+    # Make the script executable
+    chmod +x $FIREWALL_TEST_SCRIPT
+    
+    echo -e "\n${GREEN}==================================================${NC}"
+    echo -e "${GREEN}Firewall test script generated at $FIREWALL_TEST_SCRIPT${NC}"
+    echo -e "${GREEN}This script will create a gateway with firewall protection${NC}"
+    echo -e "${GREEN}and data masking and test it with malicious content${NC}"
+    echo -e "${GREEN}to demonstrate how the firewall works.${NC}"
+    echo -e "\n${YELLOW}Run it with: ./$FIREWALL_TEST_SCRIPT${NC}"
+    echo -e "${GREEN}==================================================${NC}"
+  else
+    echo -e "${YELLOW}Firewall template file not found at $FIREWALL_TEMPLATE_FILE${NC}"
+    echo -e "${YELLOW}Skipping firewall test script generation${NC}"
+  fi
+fi

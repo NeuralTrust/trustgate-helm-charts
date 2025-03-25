@@ -17,13 +17,12 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Pre-configured endpoints from deployment
-ADMIN_URL="http://{{ADMIN_IP}}/api/v1"
-PROXY_URL="http://{{PROXY_IP}}"
-PROXY_IP="{{PROXY_IP}}"
+ADMIN_URL="http://localhost:8080/api/v1"
+PROXY_URL="http://localhost:8081"
 BASE_DOMAIN="{{SERVER_BASE_DOMAIN}}"
-FIREWALL_URL="http://data-plane-firewall.svc.trustgate.cluster.local:80"
+FIREWALL_URL="http://trustgate-firewall.trustgate.svc.cluster.local:80/v1"
 FIREWALL_TOKEN="{{JWT_TOKEN}}"
-MODERATION_URL="http://data-plane-moderation.svc.trustgate.cluster.local:80"
+MODERATION_URL="http://trustgate-moderation.trustgate.svc.cluster.local:80/v1"
 MODERATION_TOKEN="{{JWT_TOKEN}}"
 SERVICE_NAME="security-service-$(date +%s)"
 UPSTREAM_NAME="security-upstream-$(date +%s)"
@@ -103,7 +102,7 @@ UPSTREAM_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/upstreams" 
     "name": "'$UPSTREAM_NAME'",
     "algorithm": "round-robin",
     "targets": [{
-        "host": "http://data-plane-control-plane.svc.trustgate.cluster.local",
+        "host": "trustgate-data-plane.trustgate.svc.cluster.local",
         "port": 80,
         "path": "/__/mirror",
         "protocol": "http",
