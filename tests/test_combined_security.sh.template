@@ -21,9 +21,9 @@ ADMIN_URL="http://{{ADMIN_IP}}/api/v1"
 PROXY_URL="http://{{PROXY_IP}}"
 PROXY_IP="{{PROXY_IP}}"
 BASE_DOMAIN="{{SERVER_BASE_DOMAIN}}"
-FIREWALL_URL="http://{{FIREWALL_IP}}/v1"
+FIREWALL_URL="http://data-plane-firewall.svc.trustgate.cluster.local:80"
 FIREWALL_TOKEN="{{JWT_TOKEN}}"
-MODERATION_URL="http://{{MODERATION_IP}}/v1"
+MODERATION_URL="http://data-plane-moderation.svc.trustgate.cluster.local:80"
 MODERATION_TOKEN="{{JWT_TOKEN}}"
 SERVICE_NAME="security-service-$(date +%s)"
 UPSTREAM_NAME="security-upstream-$(date +%s)"
@@ -103,7 +103,7 @@ UPSTREAM_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/upstreams" 
     "name": "'$UPSTREAM_NAME'",
     "algorithm": "round-robin",
     "targets": [{
-        "host": "'$PROXY_IP'",
+        "host": "http://data-plane-control-plane.svc.trustgate.cluster.local",
         "port": 80,
         "path": "/__/mirror",
         "protocol": "http",

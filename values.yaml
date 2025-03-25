@@ -50,11 +50,11 @@ firewall:
     fsGroup: 1001
   resources:
     requests:
-      cpu: 4000m
-      memory: 8Gi
+      cpu: 1000m
+      memory: 2Gi
     limits:
-      cpu: 8000m
-      memory: 16Gi
+      cpu: 2000m
+      memory: 4Gi
   nodeSelector: {}
   tolerations: []
   affinity:
@@ -86,10 +86,10 @@ moderation:
     fsGroup: 1001
   resources:
     requests:
-      cpu: 4000m
-      memory: 8Gi
+      cpu: 1000m
+      memory: 2Gi
     limits:
-      cpu: 8000m
+      cpu: 2000m
       memory: 16Gi
   nodeSelector: {}
   tolerations: []
@@ -176,11 +176,11 @@ dataPlane:
   
   resources:
     requests:
-      cpu: 4000m
-      memory: 8Gi
+      cpu: 1000m
+      memory: 2Gi
     limits:
-      cpu: 8000m
-      memory: 16Gi
+      cpu: 2000m
+      memory: 4Gi
   # Add ports configuration
   ports:
     http: 8081  
