@@ -1,5 +1,6 @@
 # Additional global settings
 global:
+  version: "ce"  # can be "ce" or "ee"
   imageRegistry: "docker.io"
   imagePullSecrets: []
   # -- Storage class to use for persistent volumes
@@ -10,20 +11,22 @@ global:
     apiKeySecret: "hf-api-key"
   image:
     pullPolicy: Always
+    image: ${TRUSTGATE_IMAGE}
+    tag: latest
   env:
-    SERVER_BASE_DOMAIN: "gateway.neuraltrust.app"
-    SERVER_ADMIN_PORT: "8080"
-    SERVER_METRICS_PORT: "9090"
-    SERVER_PROXY_PORT: "8081"
-    DATABASE_HOST: "postgresql.default.svc.cluster.local"
-    DATABASE_PORT: "5432"
-    DATABASE_USER: "trustgate"
-    DATABASE_PASSWORD: "trustgate"
-    DATABASE_NAME: "trustgate"
-    REDIS_HOST: "redis.default.svc.cluster.local"
-    REDIS_PORT: "6379"
-    REDIS_PASSWORD: "trustgate"
-    REDIS_DB: "0"
+    SERVER_BASE_DOMAIN: ${SERVER_BASE_DOMAIN}
+    SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT}
+    SERVER_METRICS_PORT: ${SERVER_METRICS_PORT}
+    SERVER_PROXY_PORT: ${SERVER_PROXY_PORT} 
+    DATABASE_HOST: ${DATABASE_HOST}
+    DATABASE_PORT: ${DATABASE_PORT}
+    DATABASE_USER: ${DATABASE_USER}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    DATABASE_NAME: ${DATABASE_NAME}
+    REDIS_HOST: ${REDIS_HOST}
+    REDIS_PORT: ${REDIS_PORT}
+    REDIS_PASSWORD: ${REDIS_PASSWORD}
+    REDIS_DB: ${REDIS_DB}
     
 # Service Account configuration
 serviceAccount:
@@ -34,7 +37,7 @@ serviceAccount:
 # Common configurations
 config:
   logLevel: "info"
-  baseDomain: "neuraltrust.app"
+  baseDomain: "neuraltrust.ai"
   providers: {}
 
 # Firewall settings
@@ -114,18 +117,10 @@ moderation:
 controlPlane:
   name: trustgate-control-plane
   replicas: 1
-  image:
-    repository: neuraltrust/trustgate
-    tag: latest
-    pullPolicy: Always
-  
-  # Add ports configuration
   ports:
-    proxy: 8080
-  
+    http: 8080
   podSecurityContext:
     fsGroup: 1001
-  
   resources:
     requests:
       cpu: 100m
@@ -168,12 +163,6 @@ controlPlane:
 dataPlane:
   name: trustgate-data-plane
   replicas: 1
-  
-  image:
-    repository: neuraltrust/trustgate
-    tag: latest
-    pullPolicy: Always
-  
   resources:
     requests:
       cpu: 1000m
@@ -301,7 +290,7 @@ monitoring:
 # Default values for TrustGate
 ingress:
   enabled: true
-  className: trustgate-nginx
+  className: nginx
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/cors-expose-headers: "*"
@@ -321,7 +310,7 @@ ingress:
   controlPlane:
     host: "admin.neuraltrust.ai"
   dataPlane:
-    host: "gateway.neuraltrust.app"
+    host: "gateway.neuraltrust.ai"
 
 # Ingress Controller configuration
 ingressController:
@@ -362,8 +351,8 @@ ingressController:
 # Optional: Add cert-manager configuration
 certManager:
   enabled: true
-  issuerName: "trustgate-letsencrypt-prod"
-  issuerKind: "ClusterIssuer"
+  issuerName: "letsencrypt-prod"
+  issuerKind: "ClusterIssuer"  # Can be "Issuer" or "ClusterIssuer"
   email: "admin@neuraltrust.ai"
   
   # Custom certificate support for both planes

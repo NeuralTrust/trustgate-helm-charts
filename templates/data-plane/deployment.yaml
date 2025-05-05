@@ -17,9 +17,13 @@ spec:
         {{- include "trustgate.dataPlane.labels" . | nindent 8 }}
         component: data-plane
     spec:
+      {{- if ne .Values.global.version "ce" }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.image.imagePullSecrets | nindent 8 }}
+      {{- end }}
       containers:
       - name: data-plane
-        image: "{{ .Values.dataPlane.image.repository }}:{{ .Values.dataPlane.image.tag }}"
+        image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
         args: ["proxy"]
         envFrom:
         - secretRef:

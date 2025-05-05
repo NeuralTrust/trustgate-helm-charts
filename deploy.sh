@@ -17,6 +17,7 @@ done
 # Set environment variables
 NAMESPACE="trustgate"
 RELEASE_NAME="trustgate"
+VERSION=${VERSION:-"ce"} # Default to Community Edition (ce)
 
 echo -e "${GREEN}Deploying TrustGate infrastructure...${NC}"
 
@@ -27,6 +28,48 @@ if [ -f "$ENV_FILE" ]; then
   export $(grep -v '^#' $ENV_FILE | xargs)
 else
   echo -e "${YELLOW}No .env file found at $ENV_FILE, using default values${NC}"
+fi
+
+# Set image repositories based on version
+if [ "$VERSION" = "ee" ]; then
+  TRUSTGATE_IMAGE="europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/trustgate-ee"
+else
+  TRUSTGATE_IMAGE="neuraltrust/trustgate"
+fi
+
+# Add PostgreSQL configuration check after the version check
+if [ -n "$EXTERNAL_POSTGRESQL" ] && [ "$EXTERNAL_POSTGRESQL" = "true" ]; then
+  echo -e "${GREEN}Using external PostgreSQL${NC}"
+  POSTGRESQL_ENABLED="--set postgresql.enabled=false"
+  
+  # Use provided external PostgreSQL credentials
+  DATABASE_HOST=${DATABASE_HOST}
+  DATABASE_PORT=${DATABASE_PORT}
+  DATABASE_USER=${DATABASE_USER}
+  DATABASE_PASSWORD=${DATABASE_PASSWORD}
+  DATABASE_NAME=${DATABASE_NAME}
+  DATABASE_SSL_MODE=${DATABASE_SSL_MODE}
+else
+  echo -e "${GREEN}Using built-in PostgreSQL${NC}"
+  POSTGRESQL_ENABLED="--set postgresql.enabled=true"
+  
+  # Generate or use existing PostgreSQL password
+  if [ -f .secret/pg_credentials.txt ]; then
+    echo -e "${GREEN}Using existing PostgreSQL password from .secret/pg_credentials.txt${NC}"
+    PG_PASSWORD=$(grep "PostgreSQL Password:" .secret/pg_credentials.txt | cut -d' ' -f3)
+  else
+    echo -e "${GREEN}Generating new PostgreSQL password${NC}"
+    PG_PASSWORD=$(openssl rand -hex 16)
+    echo "PostgreSQL Password: $PG_PASSWORD" > .secret/pg_credentials.txt
+  fi
+
+  # Set internal PostgreSQL connection details
+  DATABASE_HOST="${RELEASE_NAME}-postgresql.${NAMESPACE}.svc.cluster.local"
+  DATABASE_PORT="5432"
+  DATABASE_USER="trustgate"
+  DATABASE_PASSWORD=$PG_PASSWORD
+  DATABASE_NAME="trustgate"
+  DATABASE_SSL_MODE="disable"
 fi
 
 # Check if ingress should be enabled
@@ -140,16 +183,6 @@ mkdir -p .secret
 # Create required secrets
 echo -e "\n${GREEN}Creating required secrets...${NC}"
 
-# Handle PostgreSQL password
-if [ -f .secret/pg_credentials.txt ]; then
-    echo -e "${GREEN}Using existing PostgreSQL password from .secret/pg_credentials.txt${NC}"
-    PG_PASSWORD=$(grep "PostgreSQL Password:" .secret/pg_credentials.txt | cut -d' ' -f3)
-else
-    echo -e "${GREEN}Generating new PostgreSQL password${NC}"
-    PG_PASSWORD=$(openssl rand -hex 16)
-    echo "PostgreSQL Password: $PG_PASSWORD" > .secret/pg_credentials.txt
-fi
-
 # Handle Redis password
 if [ -f .secret/redis_credentials.txt ]; then
     echo -e "${GREEN}Using existing Redis password from .secret/redis_credentials.txt${NC}"
@@ -162,16 +195,10 @@ fi
 
 # Set default values for environment variables if not set
 LOG_LEVEL=${LOG_LEVEL:-"info"}
-SERVER_BASE_DOMAIN=${SERVER_BASE_DOMAIN:-"example.com"}
-SERVER_ADMIN_PORT=${SERVER_ADMIN_PORT:-"8080"}
-SERVER_METRICS_PORT=${SERVER_METRICS_PORT:-"9090"}
-SERVER_PROXY_PORT=${SERVER_PROXY_PORT:-"8081"}
-DATABASE_HOST=${DATABASE_HOST:-"trustgate-postgresql.$NAMESPACE.svc.cluster.local"}
-DATABASE_PORT=${DATABASE_PORT:-"5432"}
-DATABASE_USER=${DATABASE_USER:-"trustgate"}
-DATABASE_PASSWORD=${DATABASE_PASSWORD:-$PG_PASSWORD}
-DATABASE_NAME=${DATABASE_NAME:-"trustgate"}
-DATABASE_SSL_MODE=${DATABASE_SSL_MODE:-"disable"}
+SERVER_BASE_DOMAIN=${SERVER_BASE_DOMAIN}
+SERVER_ADMIN_PORT=${SERVER_ADMIN_PORT}
+SERVER_METRICS_PORT=${SERVER_METRICS_PORT}
+SERVER_PROXY_PORT=${SERVER_PROXY_PORT}
 REDIS_HOST=${REDIS_HOST:-"trustgate-redis-headless.$NAMESPACE.svc.cluster.local"}
 REDIS_PORT=${REDIS_PORT:-"6379"}
 REDIS_PASSWORD=${REDIS_PASSWORD:-$REDIS_PASSWORD}
@@ -296,9 +323,12 @@ kubectl create secret generic ${RELEASE_NAME}-env-vars \
 echo -e "\n${GREEN}Deploying TrustGate using Helm...${NC}"
 helm upgrade --install $RELEASE_NAME ./ \
   --namespace $NAMESPACE \
-  --set postgresql.auth.password=$PG_PASSWORD \
-  --set postgresql.auth.username=trustgate \
-  --set postgresql.auth.database=trustgate \
+  --set global.version=$VERSION \
+  --set global.image.repository=$TRUSTGATE_IMAGE \
+  $POSTGRESQL_ENABLED \
+  --set postgresql.auth.password=$DATABASE_PASSWORD \
+  --set postgresql.auth.username=$DATABASE_USER \
+  --set postgresql.auth.database=$DATABASE_NAME \
   --set redis.auth.password=$REDIS_PASSWORD \
   $INGRESS_ENABLED \
   --set global.env.LOG_LEVEL=$LOG_LEVEL \

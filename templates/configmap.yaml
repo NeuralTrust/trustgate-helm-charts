@@ -7,10 +7,10 @@ metadata:
 data:
   config.yaml: |
     server:
-      admin_port: {{ .Values.controlPlane.ports.proxy }}
-      proxy_port: {{ .Values.dataPlane.ports.http }}
-      metrics_port: 9090
-      base_domain: {{ .Values.config.baseDomain }}
+      admin_port: {{ .Values.global.env.SERVER_ADMIN_PORT }}
+      proxy_port: {{ .Values.global.env.SERVER_PROXY_PORT }}
+      metrics_port: {{ .Values.global.env.SERVER_METRICS_PORT }}
+      base_domain: {{ .Values.global.env.SERVER_BASE_DOMAIN }}
 
     metrics:
       enabled: {{ .Values.monitoring.serviceMonitor.enabled }}
@@ -20,22 +20,16 @@ data:
       enable_per_route: true
 
     database:
-      {{- if .Values.postgresql.enabled }}
-      host: "{{ include "trustgate.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local"
-      {{- else if .Values.postgresql.external.host }}
-      host: {{ .Values.postgresql.external.host }}
-      {{- else }}
-      host: localhost
-      {{- end }}
-      port: 5432
-      user: {{ .Values.postgresql.auth.username }}
-      password: "${DB_PASSWORD}"
-      dbname: {{ .Values.postgresql.auth.database }}
-      ssl_mode: disable
+      host: {{ .Values.global.env.DATABASE_HOST }}
+      port: {{ .Values.global.env.DATABASE_PORT }}
+      user: {{ .Values.global.env.DATABASE_USER }}
+      password: {{ .Values.global.env.DATABASE_PASSWORD }}
+      dbname: {{ .Values.global.env.DATABASE_NAME }}
+      ssl_mode: {{ .Values.global.env.DATABASE_SSL_MODE }}
 
     redis:
-      host: "{{ include "trustgate.fullname" . }}-redis-headless.{{ .Release.Namespace }}.svc.cluster.local"
-      port: 6379
-      db: 0
-      username: "default"
-      password: "${REDIS_PASSWORD}"
+      host: {{ .Values.global.env.REDIS_HOST }}
+      port: {{ .Values.global.env.REDIS_PORT }}
+      db: {{ .Values.global.env.REDIS_DB }}
+      username: {{ .Values.global.env.REDIS_USERNAME }}
+      password: {{ .Values.global.env.REDIS_PASSWORD }}
