@@ -1,0 +1,89 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "trustgate.fullname" . }}-postgresql
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+    component: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "trustgate.selectorLabels" . | nindent 6 }}
+      component: postgresql
+  template:
+    metadata:
+      labels:
+        {{- include "trustgate.selectorLabels" . | nindent 8 }}
+        component: postgresql
+    spec:
+      securityContext:
+      initContainers:
+      - name: init-chmod-data
+        image: gcr.io/google-containers/busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /var/lib/postgresql/data/pgdata
+        securityContext:
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/postgresql/data
+      containers:
+      - name: postgresql
+        image: {{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
+        securityContext:
+        env:
+        - name: POSTGRES_USER
+          value: {{ .Values.postgresql.auth.username }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.auth.existingSecret }}
+              key: {{ .Values.postgresql.auth.existingSecretPasswordKey }}
+        - name: POSTGRES_DB
+          value: {{ .Values.postgresql.auth.database }}
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+          name: postgresql
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgresql-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+        args:
+        - "-c"
+        - "config_file=/etc/postgresql/postgresql.conf"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - {{ .Values.postgresql.auth.username }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - {{ .Values.postgresql.auth.username }}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          {{- toYaml .Values.postgresql.resources | nindent 10 }}
+      volumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: {{ include "trustgate.fullname" . }}-postgresql-pvc
+      - name: postgresql-config
+        configMap:
+          name: {{ include "trustgate.fullname" . }}-postgresql-config
+{{- end }} 

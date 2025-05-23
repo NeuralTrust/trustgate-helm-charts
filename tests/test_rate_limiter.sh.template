@@ -36,6 +36,7 @@ echo -e "\n${GREEN}Using subdomain: $EXAMPLE_SUBDOMAIN${NC}"
 echo -e "\n${GREEN}1. Creating gateway with rate limiting plugin...${NC}"
 GATEWAY_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "name": "Rate Limited Gateway",
     "subdomain": "'$EXAMPLE_SUBDOMAIN'",
@@ -81,6 +82,7 @@ fi
 echo -e "\n${GREEN}2. Creating API key for the gateway...${NC}"
 API_KEY_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/keys" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "name": "Test Key",
     "expires_at": "2026-01-01T00:00:00Z"
@@ -100,6 +102,7 @@ fi
 echo -e "\n${GREEN}3. Creating upstream pointing to the health endpoint...${NC}"
 UPSTREAM_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/upstreams" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "name": "'$UPSTREAM_NAME'",
     "algorithm": "round-robin",
@@ -131,6 +134,7 @@ fi
 echo -e "\n${GREEN}4. Creating service using the upstream...${NC}"
 SERVICE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/services" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "name": "'$SERVICE_NAME'",
     "type": "upstream",
@@ -152,6 +156,7 @@ fi
 echo -e "\n${GREEN}5. Creating rule to route traffic to the service...${NC}"
 RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "path": "/test",
     "service_id": "'$SERVICE_ID'",
@@ -190,7 +195,7 @@ make_request() {
   
   RESPONSE=$(curl -s -w "\n%{http_code}" "$PROXY_URL/test" \
     -H "Host: $SUBDOMAIN.$BASE_DOMAIN" \
-    -H "X-API-Key: $API_KEY")
+    -H "X-TG-API-Key: $API_KEY")
   
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
   BODY=$(echo "$RESPONSE" | head -n1)
@@ -201,7 +206,7 @@ make_request() {
   elif [ "$HTTP_CODE" == "429" ]; then
     RETRY_AFTER=$(curl -s -I "$PROXY_URL/test" \
       -H "Host: $SUBDOMAIN.$BASE_DOMAIN" \
-      -H "X-API-Key: $API_KEY" | grep -i "retry-after" | awk '{print $2}' | tr -d '\r')
+      -H "X-TG-API-Key: $API_KEY" | grep -i "retry-after" | awk '{print $2}' | tr -d '\r')
     
     echo -e "${RED}Rate limited! HTTP 429 Too Many Requests${NC}"
     echo -e "${YELLOW}Retry-After: $RETRY_AFTER seconds${NC}"

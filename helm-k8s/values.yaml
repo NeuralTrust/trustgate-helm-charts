@@ -205,8 +205,8 @@ dataPlane:
 redis:
   enabled: true
   image:
-    repository: redis
-    tag: 7.0-alpine
+    repository: redislabs/redisearch
+    tag: 2.6.9
     pullPolicy: IfNotPresent
   # External Redis configuration if redis.enabled is false
   external:

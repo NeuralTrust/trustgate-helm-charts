@@ -27,6 +27,8 @@ spec:
         - /etc/redis/redis.conf
         - --requirepass
         - "{{ .Values.redis.auth.password }}"
+        - --loadmodule
+        - /usr/lib/redis/modules/redisearch.so
         env:
         - name: REDIS_PASSWORD
           valueFrom:
