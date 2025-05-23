@@ -12,6 +12,7 @@ test_rate_limiter.sh
 test_combined_security.sh
 test_firewall.sh
 neuraltrust-app-prod.json
+.DS_Store
 
 # Add the .secret directory
 .secret/
