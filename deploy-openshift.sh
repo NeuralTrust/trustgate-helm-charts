@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 # Check for required commands
-for cmd in kubectl helm openssl base64 jq; do
+for cmd in oc helm openssl base64 jq; do
   if ! command -v $cmd &> /dev/null; then
     echo -e "${RED}Error: $cmd is not installed. Please install it to continue.${NC}"
     exit 1
@@ -20,10 +20,10 @@ RELEASE_NAME="trustgate"
 REGISTRY_CREDS=""
 
 # Prompt for version
-read -p "Enter the edition to deploy (e.g., ce (Community Edition), ee (Enterprise Edition)) [default: ce]: " VERSION_INPUT 
+read -p "Enter the edition to deploy (e.g., ce (Community Edition), ee (Enterprise Edition)) [default: ce]: " VERSION_INPUT
 VERSION=${VERSION_INPUT:-"ce"}
 
-echo -e "${GREEN}Deploying TrustGate infrastructure...${NC}"
+echo -e "${GREEN}Deploying TrustGate infrastructure (Version: $VERSION)...${NC}"
 
 # Load environment variables from .env file if it exists
 ENV_FILE=".env"
@@ -38,7 +38,7 @@ fi
 if [ "$VERSION" = "ee" ]; then
   TRUSTGATE_IMAGE="europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/trustgate-ee"
 else
-  TRUSTGATE_IMAGE="neuraltrust/trustgate"
+  TRUSTGATE_IMAGE="neuraltrust/trustgate" # "image-registry.openshift-image-registry.svc:5000/trustgate/api-trustgate" 
 fi
 
 # Add PostgreSQL configuration check after the version check
@@ -75,16 +75,6 @@ else
   DATABASE_NAME="trustgate"
   DATABASE_SSL_MODE="disable"
 fi
-
-# Check if ingress should be enabled
-if [ -n "$ENABLE_INGRESS" ] && [ "$ENABLE_INGRESS" = "true" ]; then
-  echo -e "${GREEN}Ingress will be enabled${NC}"
-  INGRESS_ENABLED="--set ingress.enabled=true"
-else
-  echo -e "${YELLOW}Ingress will be disabled (default)${NC}"
-  INGRESS_ENABLED="--set ingress.enabled=false"
-fi
-
 
 # --- Configure GCP Artifact Registry credentials if GOOGLE_APPLICATION_CREDENTIALS is provided ---
 if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
@@ -190,33 +180,13 @@ else
 fi
 
 # Check if Prometheus Operator CRDs are installed
-if kubectl get crd servicemonitors.monitoring.coreos.com > /dev/null 2>&1; then
+if oc get crd servicemonitors.monitoring.coreos.com > /dev/null 2>&1; then
   echo -e "${GREEN}Prometheus Operator CRDs found, enabling ServiceMonitor${NC}"
   MONITORING_ENABLED="--set monitoring.serviceMonitor.enabled=true"
 else
   echo -e "${YELLOW}Prometheus Operator CRDs not found, disabling ServiceMonitor${NC}"
   MONITORING_ENABLED="--set monitoring.serviceMonitor.enabled=false"
 fi
-
-# Check if cert-manager should be enabled
-if [ -z "$ENABLE_INGRESS" ] || [ "$ENABLE_INGRESS" != "true" ]; then
-  echo -e "${YELLOW}Ingress is disabled, disabling cert-manager integration${NC}"
-  CERT_MANAGER_ENABLED="--set certManager.enabled=false"
-else
-  # Only check for cert-manager if ingress is enabled
-  if kubectl get crd certificates.cert-manager.io > /dev/null 2>&1; then
-    echo -e "${GREEN}cert-manager CRDs found, enabling Certificate resources${NC}"
-    CERT_MANAGER_ENABLED="--set certManager.enabled=true"
-  else
-    echo -e "${YELLOW}cert-manager CRDs not found, disabling Certificate resources${NC}"
-    echo -e "${YELLOW}To enable TLS certificate management, install cert-manager:${NC}"
-    echo -e "${YELLOW}kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml${NC}"
-    CERT_MANAGER_ENABLED="--set certManager.enabled=false"
-  fi
-fi
-
-# Create namespace if it doesn't exist
-kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
 
 # Create .secret directory if it doesn't exist
 mkdir -p .secret
@@ -240,6 +210,19 @@ SERVER_BASE_DOMAIN=${SERVER_BASE_DOMAIN}
 SERVER_ADMIN_PORT=${SERVER_ADMIN_PORT}
 SERVER_METRICS_PORT=${SERVER_METRICS_PORT}
 SERVER_PROXY_PORT=${SERVER_PROXY_PORT}
+SERVER_SECRET_KEY=${SERVER_SECRET_KEY}
+
+# Generate SERVER_SECRET_KEY if not set
+if [ -z "$SERVER_SECRET_KEY" ]; then
+  echo -e "${YELLOW}SERVER_SECRET_KEY is not set. Generating a new one.${NC}"
+  SERVER_SECRET_KEY=$(openssl rand -hex 32)
+  echo -e "${GREEN}Generated SERVER_SECRET_KEY: $SERVER_SECRET_KEY${NC}"
+  # Ensure .secret directory exists
+  mkdir -p .secret
+  echo "SERVER_SECRET_KEY: $SERVER_SECRET_KEY" > .secret/server_credentials.txt
+  echo -e "${GREEN}Saved generated SERVER_SECRET_KEY to .secret/server_credentials.txt${NC}"
+fi
+
 REDIS_HOST=${REDIS_HOST:-"trustgate-redis-headless.$NAMESPACE.svc.cluster.local"}
 REDIS_PORT=${REDIS_PORT:-"6379"}
 REDIS_PASSWORD=${REDIS_PASSWORD:-$REDIS_PASSWORD}
@@ -252,23 +235,23 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   
   # Create secret from the Google service account JSON key file
   echo -e "${GREEN}Creating Google service account credentials secret${NC}"
-  kubectl create secret docker-registry gcp-registry-creds \
+  oc create secret docker-registry gcp-registry-creds \
     --docker-server=$REGISTRY_SERVER \
     --docker-username=_json_key \
     --docker-password="$(cat $GOOGLE_APPLICATION_CREDENTIALS)" \
     --docker-email=${REGISTRY_EMAIL:-"admin@neuraltrust.ai"} \
     --namespace=$NAMESPACE \
-    --dry-run=client -o yaml | kubectl apply -f -
+    --dry-run=client -o yaml | oc apply -f -
   
   REGISTRY_CREDS="--set global.image.imagePullSecrets[0].name=gcp-registry-creds"
   
   # Create Hugging Face API key secret
   HF_KEY=${HUGGINGFACE_TOKEN:-$HF_API_KEY}
   echo -e "${GREEN}Creating Hugging Face API key secret${NC}"
-  kubectl create secret generic hf-api-key \
+  oc create secret generic hf-api-key \
     --from-literal=HUGGINGFACE_TOKEN=$HF_KEY \
     --namespace=$NAMESPACE \
-    --dry-run=client -o yaml | kubectl apply -f -
+    --dry-run=client -o yaml | oc apply -f -
   
   HUGGINGFACE_SECRET="--set global.huggingface.apiKeySecret=hf-api-key"
   
@@ -330,10 +313,10 @@ if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   
   # Create JWT secret for firewall API
   echo -e "${GREEN}Creating JWT secret for firewall API${NC}"
-  kubectl create secret generic firewall-jwt-secret \
+  oc create secret generic firewall-jwt-secret \
     --from-literal=JWT_SECRET=$JWT_SECRET \
     --namespace=$NAMESPACE \
-    --dry-run=client -o yaml | kubectl apply -f -
+    --dry-run=client -o yaml | oc apply -f -
   
   # Save the token to be displayed in NOTES.txt
   JWT_TOKEN_FOR_NOTES=$JWT_TOKEN
@@ -341,12 +324,13 @@ fi
 
 # Create environment variables secret
 echo -e "${GREEN}Creating environment variables secret...${NC}"
-kubectl create secret generic ${RELEASE_NAME}-env-vars \
+oc create secret generic ${RELEASE_NAME}-env-vars \
   --from-literal=LOG_LEVEL=$LOG_LEVEL \
   --from-literal=SERVER_BASE_DOMAIN=$SERVER_BASE_DOMAIN \
   --from-literal=SERVER_ADMIN_PORT=$SERVER_ADMIN_PORT \
   --from-literal=SERVER_METRICS_PORT=$SERVER_METRICS_PORT \
   --from-literal=SERVER_PROXY_PORT=$SERVER_PROXY_PORT \
+  --from-literal=SERVER_SECRET_KEY=$SERVER_SECRET_KEY \
   --from-literal=DATABASE_HOST=$DATABASE_HOST \
   --from-literal=DATABASE_PORT=$DATABASE_PORT \
   --from-literal=DATABASE_USER=$DATABASE_USER \
@@ -358,12 +342,15 @@ kubectl create secret generic ${RELEASE_NAME}-env-vars \
   --from-literal=REDIS_PASSWORD=$REDIS_PASSWORD \
   --from-literal=REDIS_DB=$REDIS_DB \
   --namespace=$NAMESPACE \
-  --dry-run=client -o yaml | kubectl apply -f -
+  --dry-run=client -o yaml | oc apply -f -
 
 # Deploy using Helm with configuration
 echo -e "\n${GREEN}Deploying TrustGate using Helm...${NC}"
-helm upgrade --install $RELEASE_NAME helm-k8s/ \
-  --values helm-k8s/values.yaml \
+
+echo "NAMESPACE: $NAMESPACE"
+
+helm upgrade --install $RELEASE_NAME helm-openshift/ \
+  --values helm-openshift/values.yaml \
   --namespace $NAMESPACE \
   --set global.version=$VERSION \
   --set global.image.repository=$TRUSTGATE_IMAGE \
@@ -372,12 +359,12 @@ helm upgrade --install $RELEASE_NAME helm-k8s/ \
   --set postgresql.auth.username=$DATABASE_USER \
   --set postgresql.auth.database=$DATABASE_NAME \
   --set redis.auth.password=$REDIS_PASSWORD \
-  $INGRESS_ENABLED \
   --set global.env.LOG_LEVEL=$LOG_LEVEL \
   --set global.env.SERVER_BASE_DOMAIN=$SERVER_BASE_DOMAIN \
   --set global.env.SERVER_ADMIN_PORT=$SERVER_ADMIN_PORT \
   --set global.env.SERVER_METRICS_PORT=$SERVER_METRICS_PORT \
   --set global.env.SERVER_PROXY_PORT=$SERVER_PROXY_PORT \
+  --set global.env.SERVER_SECRET_KEY=$SERVER_SECRET_KEY \
   --set global.env.DATABASE_HOST=$DATABASE_HOST \
   --set global.env.DATABASE_PORT=$DATABASE_PORT \
   --set global.env.DATABASE_USER=$DATABASE_USER \
@@ -389,30 +376,29 @@ helm upgrade --install $RELEASE_NAME helm-k8s/ \
   --set global.env.REDIS_PASSWORD=$REDIS_PASSWORD \
   --set global.env.REDIS_DB=$REDIS_DB \
   $MONITORING_ENABLED \
-  $CERT_MANAGER_ENABLED \
   $FIREWALL_ENABLED \
   $MODERATION_ENABLED \
   $REGISTRY_CREDS
 
 # Wait for pods to be ready
 echo -e "\n${GREEN}Waiting for pods to be ready...${NC}"
-kubectl wait --for=condition=ready pod \
+oc wait --for=condition=ready pod \
   --selector app.kubernetes.io/instance=$RELEASE_NAME \
   --namespace $NAMESPACE \
   --timeout=300s
 
 # Show deployment status
 echo -e "\n${GREEN}Deployment Status:${NC}"
-kubectl get pods -n $NAMESPACE
+oc get pods -n $NAMESPACE
 
 echo -e "\n${GREEN}TrustGate infrastructure deployed successfully!${NC}"
 
 echo -e "\n${YELLOW}Services are deployed with ClusterIP. You can use port-forwarding to access them:${NC}"
-echo -e "kubectl port-forward svc/${RELEASE_NAME}-control-plane -n ${NAMESPACE} 8080:80"
-echo -e "kubectl port-forward svc/${RELEASE_NAME}-data-plane -n ${NAMESPACE} 8081:80"
+echo -e "oc port-forward svc/${RELEASE_NAME}-control-plane -n ${NAMESPACE} 8080:80"
+echo -e "oc port-forward svc/${RELEASE_NAME}-data-plane -n ${NAMESPACE} 8081:80"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
-  echo -e "kubectl port-forward svc/${RELEASE_NAME}-firewall -n ${NAMESPACE} 8082:80"
+  echo -e "oc port-forward svc/${RELEASE_NAME}-firewall -n ${NAMESPACE} 8082:80"
 fi
 
 echo -e "\n${YELLOW}After port-forwarding, you can access the services at:${NC}"

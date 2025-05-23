@@ -15,3 +15,5 @@ neuraltrust-app-prod.json
 
 # Add the .secret directory
 .secret/
+.env
+!.env.example

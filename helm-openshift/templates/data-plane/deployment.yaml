@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "trustgate.fullname" . }}-data-plane
+  labels:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane
+spec:
+  replicas: {{ .Values.dataPlane.replicas }}
+  selector:
+    matchLabels:
+      {{- include "trustgate.dataPlane.labels" . | nindent 6 }}
+      component: data-plane
+  template:
+    metadata:
+      labels:
+        {{- include "trustgate.dataPlane.labels" . | nindent 8 }}
+        component: data-plane
+    spec:
+      {{- if ne .Values.global.version "ce" }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.image.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: logs-volume
+          emptyDir: {}
+      containers:
+      - name: data-plane
+        image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+        args: ["proxy"]
+        envFrom:
+        - secretRef:
+            name: {{ include "trustgate.fullname" . }}-env-vars
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        volumeMounts:
+        - name: logs-volume
+          mountPath: /app/logs
+        ports:
+        - containerPort: {{ .Values.dataPlane.ports.http }}
+          name: http
+        resources:
+          {{- toYaml .Values.dataPlane.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 40
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.dataPlane.podSecurityContext | nindent 8 }}
+      {{- with .Values.dataPlane.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dataPlane.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dataPlane.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} 
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-data-plane
+  labels:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: {{ .Values.dataPlane.ports.http }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "trustgate.dataPlane.labels" . | nindent 4 }}
+    component: data-plane 

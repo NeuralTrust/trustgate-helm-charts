@@ -66,7 +66,7 @@ TrustGate consists of several key components:
 
 ## Prerequisites
 
-- Kubernetes 1.19+
+- Kubernetes 1.19+ or OpenShift 4.10+
 - Helm 3.2.0+
 - Ingress controller (nginx-ingress recommended)
 - cert-manager (optional, for TLS)
@@ -80,10 +80,19 @@ For a more guided installation experience, use our deployment script:
 # Download the deployment script
 git clone https://github.com/NeuralTrust/trustgate-helm-charts.git
 cd trustgate-helm-charts
-chmod +x deploy-shared.sh
 
-# Run the deployment script
-./deploy-shared.sh
+# copy the .env.example file to .env
+cp .env.example .env
+
+# If you are deploying to Kubernetes
+chmod +x deploy.sh
+# If you are deploying to OpenShift
+chmod +x deploy-openshift.sh
+
+# Run the deployment to Kubernetes
+./deploy.sh
+# Run the deployment to OpenShift
+./deploy-openshift.sh
 ```
 
 The script will:
@@ -93,6 +102,15 @@ The script will:
 - Wait for LoadBalancer IPs to be assigned (with timeout)
 - Generate test scripts with the actual deployment values
 - Provide access information after deployment
+
+### Enteriprise version
+
+To deploy the enterprise version, you need to have a Google service account JSON key file from NeuralTrust.
+Then, you need to set the GOOGLE_APPLICATION_CREDENTIALS environment variable to the path of the JSON key file.
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google-service-account.json
+```
 
 ### Enabling the AI Firewall and Moderation (Enterprise Feature)
 
@@ -113,11 +131,20 @@ The script will guide you through providing these credentials.
 
 After deployment, the script will automatically generate test scripts that you can use to verify your installation and explore TrustGate's features.
 
+Open a new terminal and run the following command to port forward the admin API:
+```bash
+kubectl port-forward svc/trustgate-control-plane -n trustgate 8080:80
+```
+Open a new terminal and run the following command to port forward the proxy API:
+```bash
+kubectl port-forward svc/trustgate-data-plane -n trustgate 8081:80
+```
+
 ### Rate Limiter Test
 
 The `test_rate_limiter.sh` script demonstrates how to create a gateway with rate limiting and test it with multiple requests:
-
 ```bash
+export ADMIN_TOKEN=$(./generate-jwt.sh "your SERVER_SECRET_KEY")
 ./test_rate_limiter.sh
 ```
 
@@ -133,6 +160,7 @@ This script will:
 If you enabled the firewall component, a `test_combined_security.sh` script will be generated:
 
 ```bash
+export ADMIN_TOKEN=$(./generate-jwt.sh "your SERVER_SECRET_KEY")
 ./test_combined_security.sh
 ```
 

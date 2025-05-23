@@ -1,0 +1,39 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "trustgate.fullname" . }}-control-plane
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.route.annotations | nindent 4 }}
+spec:
+  host: {{ .Values.route.controlPlane.host }}
+  to:
+    kind: Service
+    name: {{ include "trustgate.fullname" . }}-control-plane
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    {{- toYaml .Values.route.controlPlane.tls | nindent 4 }}
+  wildcardPolicy: None
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "trustgate.fullname" . }}-data-plane
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.route.annotations | nindent 4 }}
+spec:
+  host: {{ .Values.route.dataPlane.host }}
+  to:
+    kind: Service
+    name: {{ include "trustgate.fullname" . }}-data-plane
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    {{- toYaml .Values.route.dataPlane.tls | nindent 4 }}
+  wildcardPolicy: None 

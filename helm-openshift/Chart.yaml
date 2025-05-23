@@ -1,0 +1,5 @@
+apiVersion: v2
+name: trustgate
+description: A Helm chart for TrustGate on OpenShift
+version: 0.1.0
+appVersion: "1.0" 
