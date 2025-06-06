@@ -31,6 +31,17 @@ spec:
         volumeMounts:
         - name: postgresql-data
           mountPath: /var/lib/postgresql/data
+        resources:
+          {{- with .Values.postgresql.initContainer.resources }}
+          {{- toYaml . | nindent 10 }}
+          {{- else }}
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          {{- end }}
       containers:
       - name: postgresql
         image: {{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
@@ -78,7 +89,16 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
         resources:
-          {{- toYaml .Values.postgresql.resources | nindent 10 }}
+          {{- with .Values.postgresql.resources }}
+          {{- toYaml . | nindent 10 }}
+          {{- else }}
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          {{- end }}
       volumes:
       - name: postgresql-data
         persistentVolumeClaim:
