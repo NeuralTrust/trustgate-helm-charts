@@ -195,7 +195,6 @@ make_request() {
   echo -e "\n${YELLOW}Request #$request_num:${NC}"
   
   RESPONSE=$(curl -s -w "\n%{http_code}" "$PROXY_URL/test" \
-    -H "Host: $SUBDOMAIN.$BASE_DOMAIN" \
     -H "X-TG-API-Key: $API_KEY")
   
   HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -206,7 +205,6 @@ make_request() {
     echo -e "${BLUE}Response:${NC} $(echo "$BODY" | jq -c '.' 2>/dev/null || echo "$BODY")"
   elif [ "$HTTP_CODE" == "429" ]; then
     RETRY_AFTER=$(curl -s -I "$PROXY_URL/test" \
-      -H "Host: $SUBDOMAIN.$BASE_DOMAIN" \
       -H "X-TG-API-Key: $API_KEY" | grep -i "retry-after" | awk '{print $2}' | tr -d '\r')
     
     echo -e "${RED}Rate limited! HTTP 429 Too Many Requests${NC}"
