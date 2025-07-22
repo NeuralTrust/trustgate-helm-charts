@@ -158,6 +158,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "path": "/fast",
+    "name": "combined rule",
     "service_id": "'$SERVICE_ID'",
     "methods": ["GET", "POST"],
     "strip_path": true,
@@ -298,6 +299,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "path": "/large",
+    "name": "large rule",
     "service_id": "'$SERVICE_ID'",
     "methods": ["GET", "POST"],
     "strip_path": true,
