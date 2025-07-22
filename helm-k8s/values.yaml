@@ -46,7 +46,7 @@ firewall:
   replicas: 1
   image:
     repository: europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/firewall
-    tag: latest
+    tag: v1.2.4
   ports:
     http: 8000
   podSecurityContext:
@@ -82,7 +82,7 @@ moderation:
   replicas: 1
   image:
     repository: europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/firewall
-    tag: latest
+    tag: v1.2.4
   ports:
     http: 8000
   podSecurityContext:
