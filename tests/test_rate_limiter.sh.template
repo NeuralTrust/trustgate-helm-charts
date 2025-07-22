@@ -159,6 +159,7 @@ RULE_RESPONSE=$(curl -s -X POST "$ADMIN_URL/gateways/$GATEWAY_ID/rules" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{
     "path": "/test",
+    "name": "test",
     "service_id": "'$SERVICE_ID'",
     "methods": ["GET", "POST"],
     "strip_path": true,
