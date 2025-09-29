@@ -18,3 +18,4 @@ neuraltrust-app-prod.json
 .secret/
 .env
 !.env.example
+.idea

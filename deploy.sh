@@ -410,6 +410,7 @@ echo -e "\n${GREEN}TrustGate infrastructure deployed successfully!${NC}"
 echo -e "\n${YELLOW}Services are deployed with ClusterIP. You can use port-forwarding to access them:${NC}"
 echo -e "kubectl port-forward svc/${RELEASE_NAME}-control-plane -n ${NAMESPACE} 8080:80"
 echo -e "kubectl port-forward svc/${RELEASE_NAME}-data-plane -n ${NAMESPACE} 8081:80"
+echo -e "kubectl port-forward svc/${RELEASE_NAME}-actions -n ${NAMESPACE} 8084:80"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   echo -e "kubectl port-forward svc/${RELEASE_NAME}-firewall -n ${NAMESPACE} 8082:80"
@@ -418,6 +419,7 @@ fi
 echo -e "\n${YELLOW}After port-forwarding, you can access the services at:${NC}"
 echo -e "Control Plane API: http://localhost:8080/api/v1"
 echo -e "Data Plane API: http://localhost:8081"
+echo -e "Actions API: http://localhost:8084"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   echo -e "Firewall API: http://localhost:8082"
