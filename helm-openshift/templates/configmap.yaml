@@ -9,6 +9,7 @@ data:
     server:
       admin_port: {{ .Values.global.env.SERVER_ADMIN_PORT }}
       proxy_port: {{ .Values.global.env.SERVER_PROXY_PORT }}
+      actions_port: {{ .Values.global.env.SERVER_ACTIONS_PORT }}
       metrics_port: {{ .Values.global.env.SERVER_METRICS_PORT }}
       base_domain: {{ .Values.global.env.SERVER_BASE_DOMAIN }}
 
