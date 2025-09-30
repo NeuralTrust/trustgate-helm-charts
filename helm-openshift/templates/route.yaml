@@ -36,4 +36,24 @@ spec:
     targetPort: http
   tls:
     {{- toYaml .Values.route.dataPlane.tls | nindent 4 }}
-  wildcardPolicy: None 
+  wildcardPolicy: None
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "trustgate.fullname" . }}-actions
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.route.annotations | nindent 4 }}
+spec:
+  host: {{ .Values.route.dataPlane.host }}
+  to:
+    kind: Service
+    name: {{ include "trustgate.fullname" . }}-actions
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    {{- toYaml .Values.route.actions.tls | nindent 4 }}
+  wildcardPolicy: None

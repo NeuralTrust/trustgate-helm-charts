@@ -12,12 +12,13 @@ global:
   image:
     pullPolicy: Always
     image: ${TRUSTGATE_IMAGE}
-    tag: v1.7.35
+    tag: v1.7.59
   env:
     SERVER_BASE_DOMAIN: ${SERVER_BASE_DOMAIN}
     SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT}
     SERVER_METRICS_PORT: ${SERVER_METRICS_PORT}
     SERVER_PROXY_PORT: ${SERVER_PROXY_PORT} 
+    SERVER_ACTIONS_PORT: ${SERVER_ACTIONS_PORT}
     DATABASE_HOST: ${DATABASE_HOST}
     DATABASE_PORT: ${DATABASE_PORT}
     DATABASE_USER: ${DATABASE_USER}
@@ -200,6 +201,52 @@ dataPlane:
   service:
     type: ClusterIP
     port: 8081
+
+# Actions settings
+actions:
+  name: trustgate-actions
+  replicas: 1
+  ports:
+    http: 8084
+  podSecurityContext:
+    fsGroup: 1001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      cpu: 200m
+      memory: 2Gi
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - trustgate-actions
+            topologyKey: kubernetes.io/hostname
+
+  service:
+    type: ClusterIP
+    port: 8084
 
 # Redis configuration
 redis:

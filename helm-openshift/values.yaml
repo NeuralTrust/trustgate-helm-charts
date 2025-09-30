@@ -18,6 +18,7 @@ global:
     SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT}
     SERVER_METRICS_PORT: ${SERVER_METRICS_PORT}
     SERVER_PROXY_PORT: ${SERVER_PROXY_PORT} 
+    SERVER_ACTIONS_PORT: ${SERVER_ACTIONS_PORT}
     DATABASE_HOST: ${DATABASE_HOST}
     DATABASE_PORT: ${DATABASE_PORT}
     DATABASE_USER: ${DATABASE_USER}
@@ -201,6 +202,52 @@ dataPlane:
     type: ClusterIP
     port: 8081
 
+# Actions settings
+actions:
+  name: trustgate-actions
+  replicas: 1
+  ports:
+    http: 8084
+  podSecurityContext:
+    fsGroup: 1001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      cpu: 200m
+      memory: 2Gi
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - trustgate-control-plane
+            topologyKey: kubernetes.io/hostname
+
+  service:
+    type: ClusterIP
+    port: 8084
+
 # Redis configuration
 redis:
   enabled: true
@@ -317,6 +364,23 @@ route:
       #   -----BEGIN CERTIFICATE-----
       #   -----END CERTIFICATE-----
   dataPlane:
+    host: ""
+    tls:
+      termination: "edge"
+      insecureEdgeTerminationPolicy: "Redirect"
+      # key: |-
+      #   -----BEGIN PRIVATE KEY-----
+      #   -----END PRIVATE KEY-----
+      # certificate: |-
+      #   -----BEGIN CERTIFICATE-----
+      #   -----END CERTIFICATE-----
+      # caCertificate: |-
+      #   -----BEGIN CERTIFICATE-----
+      #   -----END CERTIFICATE-----
+      # destinationCACertificate: |-
+      #   -----BEGIN CERTIFICATE-----
+      #   -----END CERTIFICATE-----
+  actions:
     host: ""
     tls:
       termination: "edge"

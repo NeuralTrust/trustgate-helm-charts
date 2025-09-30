@@ -240,6 +240,7 @@ SERVER_BASE_DOMAIN=${SERVER_BASE_DOMAIN}
 SERVER_ADMIN_PORT=${SERVER_ADMIN_PORT}
 SERVER_METRICS_PORT=${SERVER_METRICS_PORT}
 SERVER_PROXY_PORT=${SERVER_PROXY_PORT}
+SERVER_ACTIONS_PORT=${SERVER_ACTIONSPORT}
 REDIS_HOST=${REDIS_HOST:-"trustgate-redis-headless.$NAMESPACE.svc.cluster.local"}
 REDIS_PORT=${REDIS_PORT:-"6379"}
 REDIS_PASSWORD=${REDIS_PASSWORD:-$REDIS_PASSWORD}
@@ -347,6 +348,7 @@ kubectl create secret generic ${RELEASE_NAME}-env-vars \
   --from-literal=SERVER_ADMIN_PORT=$SERVER_ADMIN_PORT \
   --from-literal=SERVER_METRICS_PORT=$SERVER_METRICS_PORT \
   --from-literal=SERVER_PROXY_PORT=$SERVER_PROXY_PORT \
+  --from-literal=SERVER_ACTIONS_PORT=$SERVER_ACTIONS_PORT \
   --from-literal=DATABASE_HOST=$DATABASE_HOST \
   --from-literal=DATABASE_PORT=$DATABASE_PORT \
   --from-literal=DATABASE_USER=$DATABASE_USER \
@@ -378,6 +380,7 @@ helm upgrade --install $RELEASE_NAME helm-k8s/ \
   --set global.env.SERVER_ADMIN_PORT=$SERVER_ADMIN_PORT \
   --set global.env.SERVER_METRICS_PORT=$SERVER_METRICS_PORT \
   --set global.env.SERVER_PROXY_PORT=$SERVER_PROXY_PORT \
+  --set global.env.SERVER_ACTIONS_PORT=$SERVER_ACTIONS_PORT \
   --set global.env.DATABASE_HOST=$DATABASE_HOST \
   --set global.env.DATABASE_PORT=$DATABASE_PORT \
   --set global.env.DATABASE_USER=$DATABASE_USER \
@@ -410,6 +413,7 @@ echo -e "\n${GREEN}TrustGate infrastructure deployed successfully!${NC}"
 echo -e "\n${YELLOW}Services are deployed with ClusterIP. You can use port-forwarding to access them:${NC}"
 echo -e "kubectl port-forward svc/${RELEASE_NAME}-control-plane -n ${NAMESPACE} 8080:80"
 echo -e "kubectl port-forward svc/${RELEASE_NAME}-data-plane -n ${NAMESPACE} 8081:80"
+echo -e "kubectl port-forward svc/${RELEASE_NAME}-actions -n ${NAMESPACE} 8084:80"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   echo -e "kubectl port-forward svc/${RELEASE_NAME}-firewall -n ${NAMESPACE} 8082:80"
@@ -418,6 +422,7 @@ fi
 echo -e "\n${YELLOW}After port-forwarding, you can access the services at:${NC}"
 echo -e "Control Plane API: http://localhost:8080/api/v1"
 echo -e "Data Plane API: http://localhost:8081"
+echo -e "Actions API: http://localhost:8084"
 
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
   echo -e "Firewall API: http://localhost:8082"
