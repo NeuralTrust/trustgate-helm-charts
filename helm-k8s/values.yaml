@@ -11,9 +11,9 @@ global:
     apiKeySecret: "hf-api-key"
   image:
     pullPolicy: Always
-    image: "europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/trustgate-ee"
-    repository: "europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/trustgate-ee"
-    tag: "232020fe427895b1cf7460f44c34cf9ed29dac64"
+    image: ${TRUSTGATE_IMAGE}
+    repository: ${TRUSTGATE_IMAGE}
+    tag: ${TRUSTGATE_TAG}
   env:
     SERVER_BASE_DOMAIN: ${SERVER_BASE_DOMAIN}
     SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT}
