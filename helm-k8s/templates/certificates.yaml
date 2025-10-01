@@ -31,3 +31,22 @@ spec:
   dnsNames:
     - {{ .Values.ingress.dataPlane.host | quote }}
 {{- end }}
+
+{{- if .Values.certManager.enabled }}
+---
+# Actions Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "trustgate.fullname" . }}-actions-cert
+  labels:
+    {{- include "trustgate.labels" . | nindent 4 }}
+    use-http01-solver: "true"
+spec:
+  secretName: trustgate-actions-tls
+  issuerRef:
+    name: {{ .Values.certManager.issuerName }}
+    kind: {{ .Values.certManager.issuerKind }}
+  dnsNames:
+    - {{ if and .Values.ingress (hasKey .Values.ingress "actions") (hasKey .Values.ingress.actions "host") }}{{ .Values.ingress.actions.host | quote }}{{ else }}{{ printf "actions.%s" .Values.global.env.SERVER_BASE_DOMAIN | quote }}{{ end }}
+{{- end }}

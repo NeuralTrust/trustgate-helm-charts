@@ -95,13 +95,13 @@ if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
     # Set default Google Artifact Registry server if not provided (REGISTRY_SERVER might also be set in .env)
     CURRENT_REGISTRY_SERVER=${REGISTRY_SERVER:-"europe-west1-docker.pkg.dev"}
     
-    oc create secret docker-registry gcp-registry-creds \
+    kubectl create secret docker-registry gcp-registry-creds \
       --docker-server="$CURRENT_REGISTRY_SERVER" \
       --docker-username=_json_key \
       --docker-password="$(cat "$GOOGLE_APPLICATION_CREDENTIALS")" \
       --docker-email="${REGISTRY_EMAIL:-"admin@neuraltrust.ai"}" \
       --namespace="$NAMESPACE" \
-      --dry-run=client -o yaml | oc apply -f -
+      --dry-run=client -o yaml | kubectl apply -f -
     
     if [ $? -eq 0 ]; then
       REGISTRY_CREDS="--set global.image.imagePullSecrets[0].name=gcp-registry-creds"
@@ -245,6 +245,9 @@ REDIS_HOST=${REDIS_HOST:-"trustgate-redis-headless.$NAMESPACE.svc.cluster.local"
 REDIS_PORT=${REDIS_PORT:-"6379"}
 REDIS_PASSWORD=${REDIS_PASSWORD:-$REDIS_PASSWORD}
 REDIS_DB=${REDIS_DB:-"0"}
+CONTROL_PLANE_HOST=${CONTROL_PLANE_HOST}
+DATA_PLANE_HOST=${DATA_PLANE_HOST}
+ACTIONS_HOST=${ACTIONS_HOST}
 
 # If firewall is enabled, set up the required secrets
 if [ -n "$ENABLE_FIREWALL" ] && [ "$ENABLE_FIREWALL" = "true" ]; then
@@ -375,6 +378,9 @@ helm upgrade --install $RELEASE_NAME helm-k8s/ \
   --set postgresql.auth.database=$DATABASE_NAME \
   --set redis.auth.password=$REDIS_PASSWORD \
   $INGRESS_ENABLED \
+  --set ingress.controlPlane.host=$CONTROL_PLANE_HOST \
+  --set ingress.dataPlane.host=$DATA_PLANE_HOST \
+  --set ingress.actions.host=$ACTIONS_HOST \
   --set global.env.LOG_LEVEL=$LOG_LEVEL \
   --set global.env.SERVER_BASE_DOMAIN=$SERVER_BASE_DOMAIN \
   --set global.env.SERVER_ADMIN_PORT=$SERVER_ADMIN_PORT \

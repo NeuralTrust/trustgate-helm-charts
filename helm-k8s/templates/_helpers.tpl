@@ -134,3 +134,11 @@ Create the name of the service account to use for moderation
 {{- default "default" .Values.moderation.serviceAccount.name }}
 {{- end }}
 {{- end }} 
+
+{{/*
+Actions labels
+*/}}
+{{- define "trustgate.actions.labels" -}}
+{{ include "trustgate.labels" . }}
+app.kubernetes.io/component: actions
+{{- end }}

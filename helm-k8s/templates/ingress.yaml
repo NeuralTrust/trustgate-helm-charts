@@ -18,11 +18,11 @@ spec:
   {{- if .Values.certManager.enabled}}
   tls:
     - hosts:
-        - admin.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+        - {{ .Values.global.env.CONTROL_PLANE_HOST }}
       secretName: trustgate-admin-tls
   {{- end }}
   rules:
-    - host: admin.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+    - host: {{ .Values.global.env.CONTROL_PLANE_HOST }}
       http:
         paths:
           - path: /
@@ -53,11 +53,11 @@ spec:
   {{- if .Values.certManager.enabled}}
   tls:
     - hosts:
-        - gateway.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+        - {{ .Values.global.env.DATA_PLANE_HOST }}
       secretName: trustgate-gateway-tls
   {{- end }}
   rules:
-    - host: gateway.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+    - host: {{ .Values.global.env.DATA_PLANE_HOST }}
       http:
         paths:
           - path: /
@@ -73,7 +73,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "trustgate.fullname" . }}-gateway
+  name: {{ include "trustgate.fullname" . }}-actions
   labels:
     {{- include "trustgate.labels" . | nindent 4 }}
     component: actions
@@ -89,11 +89,11 @@ spec:
   {{- if .Values.certManager.enabled}}
   tls:
     - hosts:
-        - gateway.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+        - {{ .Values.global.env.ACTIONS_HOST }}
       secretName: trustgate-gateway-tls
   {{- end }}
   rules:
-    - host: gateway.{{ .Values.global.env.SERVER_BASE_DOMAIN }}
+    - host: {{ .Values.global.env.ACTIONS_HOST }}
       http:
         paths:
           - path: /

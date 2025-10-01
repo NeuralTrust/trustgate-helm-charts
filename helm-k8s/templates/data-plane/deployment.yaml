@@ -23,7 +23,7 @@ spec:
       {{- end }}
       containers:
       - name: data-plane
-        image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+        image: "{{ .Values.global.image.image }}:{{ .Values.global.image.tag }}"
         args: ["proxy"]
         envFrom:
         - secretRef:

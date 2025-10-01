@@ -23,8 +23,8 @@ spec:
       {{- end }}
       containers:
       - name: actions
-        image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
-        args: ["admin"]
+        image: "{{ .Values.global.image.image }}:{{ .Values.global.image.tag }}"
+        args: ["actions"]
         envFrom:
         - secretRef:
             name: {{ include "trustgate.fullname" . }}-env-vars

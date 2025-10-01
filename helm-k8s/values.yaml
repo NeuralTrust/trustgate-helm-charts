@@ -2,7 +2,7 @@
 global:
   version: "ce"  # can be "ce" or "ee"
   imageRegistry: "docker.io"
-  imagePullSecrets: []
+  imagePullSecrets: [ ]
   # -- Storage class to use for persistent volumes
   # If not set, will use the cluster's default StorageClass
   storageClass: ""
@@ -11,13 +11,14 @@ global:
     apiKeySecret: "hf-api-key"
   image:
     pullPolicy: Always
-    image: ${TRUSTGATE_IMAGE}
-    tag: v1.7.59
+    image: "europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/trustgate-ee"
+    repository: "europe-west1-docker.pkg.dev/neuraltrust-app-prod/nt-docker/trustgate-ee"
+    tag: "232020fe427895b1cf7460f44c34cf9ed29dac64"
   env:
     SERVER_BASE_DOMAIN: ${SERVER_BASE_DOMAIN}
     SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT}
     SERVER_METRICS_PORT: ${SERVER_METRICS_PORT}
-    SERVER_PROXY_PORT: ${SERVER_PROXY_PORT} 
+    SERVER_PROXY_PORT: ${SERVER_PROXY_PORT}
     SERVER_ACTIONS_PORT: ${SERVER_ACTIONS_PORT}
     DATABASE_HOST: ${DATABASE_HOST}
     DATABASE_PORT: ${DATABASE_PORT}
@@ -28,18 +29,21 @@ global:
     REDIS_PORT: ${REDIS_PORT}
     REDIS_PASSWORD: ${REDIS_PASSWORD}
     REDIS_DB: ${REDIS_DB}
-    
+    CONTROL_PLANE_HOST: ${CONTROL_PLANE_HOST}
+    DATA_PLANE_HOST: ${DATA_PLANE_HOST}
+    ACTIONS_HOST: ${ACTIONS_HOST}
+
 # Service Account configuration
 serviceAccount:
   create: true
   name: ""
-  annotations: {}
+  annotations: { }
 
 # Common configurations
 config:
   logLevel: "info"
   baseDomain: "neuraltrust.ai"
-  providers: {}
+  providers: { }
 
 # Firewall settings
 firewall:
@@ -59,20 +63,20 @@ firewall:
     limits:
       cpu: 2000m
       memory: 4Gi
-  nodeSelector: {}
-  tolerations: []
+  nodeSelector: { }
+  tolerations: [ ]
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - trustgate-firewall
-          topologyKey: kubernetes.io/hostname
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - trustgate-firewall
+            topologyKey: kubernetes.io/hostname
 
   service:
     type: ClusterIP
@@ -95,20 +99,20 @@ moderation:
     limits:
       cpu: 2000m
       memory: 16Gi
-  nodeSelector: {}
-  tolerations: []
+  nodeSelector: { }
+  tolerations: [ ]
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - trustgate-firewall
-          topologyKey: kubernetes.io/hostname
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - trustgate-firewall
+            topologyKey: kubernetes.io/hostname
 
   service:
     type: ClusterIP
@@ -129,32 +133,32 @@ controlPlane:
     limits:
       cpu: 200m
       memory: 2Gi
-      
+
   podDisruptionBudget:
     enabled: true
     minAvailable: 1
-    
+
   autoscaling:
     enabled: true
     minReplicas: 1
     maxReplicas: 10
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
-    
-  nodeSelector: {}
-  tolerations: []
+
+  nodeSelector: { }
+  tolerations: [ ]
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - trustgate-control-plane
-          topologyKey: kubernetes.io/hostname
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - trustgate-control-plane
+            topologyKey: kubernetes.io/hostname
 
   service:
     type: ClusterIP
@@ -173,30 +177,30 @@ dataPlane:
       memory: 4Gi
   # Add ports configuration
   ports:
-    http: 8081  
+    http: 8081
   podDisruptionBudget:
     enabled: true
     minAvailable: 2
-    
+
   autoscaling:
     enabled: true
     minReplicas: 1
     maxReplicas: 20
     targetCPUUtilizationPercentage: 75
     targetMemoryUtilizationPercentage: 75
-    
-  nodeSelector: {}
-  tolerations: []
+
+  nodeSelector: { }
+  tolerations: [ ]
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-          - key: app
-            operator: In
-            values:
-            - trustgate-data-plane
-        topologyKey: kubernetes.io/hostname
+        - labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - trustgate-data-plane
+          topologyKey: kubernetes.io/hostname
 
   service:
     type: ClusterIP
@@ -229,8 +233,8 @@ actions:
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
 
-  nodeSelector: {}
-  tolerations: []
+  nodeSelector: { }
+  tolerations: [ ]
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -308,7 +312,7 @@ monitoring:
   serviceMonitor:
     enabled: false
     interval: 30s
-    labels: {}
+    labels: { }
   external:
     enabled: false
     endpoint: ""
@@ -316,7 +320,7 @@ monitoring:
   
   grafanaDashboards:
     enabled: true
-    
+
   prometheusRules:
     enabled: true
     rules:
@@ -327,7 +331,7 @@ monitoring:
           severity: critical
         annotations:
           description: High error rate detected
-          
+
   logging:
     enabled: true
     elasticsearch:
@@ -355,9 +359,11 @@ ingress:
     nginx.ingress.kubernetes.io/x-frame-options: "DENY"
     nginx.ingress.kubernetes.io/x-xss-protection: "1; mode=block"
   controlPlane:
-    host: "admin.neuraltrust.ai"
+    host: ${CONTROL_PLANE_HOST}
   dataPlane:
-    host: "gateway.neuraltrust.ai"
+    host: ${DATA_PLANE_HOST}
+  actions:
+    host: ${ACTIONS_HOST}
 
 # Ingress Controller configuration
 ingressController:
@@ -383,7 +389,7 @@ ingressController:
   
   service:
     type: LoadBalancer
-    annotations: {}
+    annotations: { }
     # Optionally add cloud provider specific annotations
     # service.beta.kubernetes.io/aws-load-balancer-internal: "true"
   

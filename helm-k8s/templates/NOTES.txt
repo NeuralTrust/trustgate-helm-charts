@@ -7,7 +7,7 @@ You can access the TrustGate services at:
   - Control Plane: https://{{ .Values.ingress.controlPlane.host }}
   - Data Plane: https://{{ .Values.ingress.dataPlane.host }}
 {{- if .Values.firewall.enabled }}
-  - Firewall API: https://{{ .Values.ingress.firewall.host | default "firewall.example.com" }}
+  - Firewall API: https://{{ if and .Values.ingress (hasKey .Values.ingress "firewall") (hasKey .Values.ingress.firewall "host") }}{{ .Values.ingress.firewall.host }}{{ else }}firewall.example.com{{ end }}
 {{- end }}
 {{- else }}
 To get the IP addresses for your TrustGate services:
@@ -96,7 +96,7 @@ The JWT token has been generated during installation and saved to firewall_jwt_c
 
 Example request to the Firewall API:
 
-curl -X POST https://{{ if .Values.ingress.enabled }}{{ .Values.ingress.firewall.host | default "firewall.example.com" }}{{ else }}FIREWALL_IP:PORT{{ end }}/v1/firewall \
+curl -X POST https://{{ if .Values.ingress.enabled }}{{ if and .Values.ingress (hasKey .Values.ingress "firewall") (hasKey .Values.ingress.firewall "host") }}{{ .Values.ingress.firewall.host }}{{ else }}firewall.example.com{{ end }}{{ else }}FIREWALL_IP:PORT{{ end }}/v1/firewall \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"input": "Your text to scan"}'

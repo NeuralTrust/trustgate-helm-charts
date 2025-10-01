@@ -19,3 +19,5 @@ neuraltrust-app-prod.json
 .env
 !.env.example
 .idea
+values-dev.yaml
+values-prod.yaml
