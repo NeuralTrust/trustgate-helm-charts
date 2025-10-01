@@ -18,11 +18,11 @@ spec:
   {{- if .Values.certManager.enabled}}
   tls:
     - hosts:
-        - {{ .Values.global.env.CONTROL_PLANE_HOST }}
+        - {{ .Values.ingress.controlPlane.host }}
       secretName: trustgate-admin-tls
   {{- end }}
   rules:
-    - host: {{ .Values.global.env.CONTROL_PLANE_HOST }}
+    - host: {{ .Values.ingress.controlPlane.host }}
       http:
         paths:
           - path: /
@@ -53,11 +53,11 @@ spec:
   {{- if .Values.certManager.enabled}}
   tls:
     - hosts:
-        - {{ .Values.global.env.DATA_PLANE_HOST }}
+        - {{ .Values.ingress.dataPlane.host }}
       secretName: trustgate-gateway-tls
   {{- end }}
   rules:
-    - host: {{ .Values.global.env.DATA_PLANE_HOST }}
+    - host: {{ .Values.ingress.dataPlane.host }}
       http:
         paths:
           - path: /
@@ -89,11 +89,11 @@ spec:
   {{- if .Values.certManager.enabled}}
   tls:
     - hosts:
-        - {{ .Values.global.env.ACTIONS_HOST }}
-      secretName: trustgate-gateway-tls
+        - {{ .Values.ingress.actions.host }}
+      secretName: trustgate-actions-tls
   {{- end }}
   rules:
-    - host: {{ .Values.global.env.ACTIONS_HOST }}
+    - host: {{ .Values.ingress.actions.host }}
       http:
         paths:
           - path: /

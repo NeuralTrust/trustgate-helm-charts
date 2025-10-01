@@ -240,7 +240,7 @@ SERVER_BASE_DOMAIN=${SERVER_BASE_DOMAIN}
 SERVER_ADMIN_PORT=${SERVER_ADMIN_PORT}
 SERVER_METRICS_PORT=${SERVER_METRICS_PORT}
 SERVER_PROXY_PORT=${SERVER_PROXY_PORT}
-SERVER_ACTIONS_PORT=${SERVER_ACTIONSPORT}
+SERVER_ACTIONS_PORT=${SERVER_ACTIONS_PORT}
 REDIS_HOST=${REDIS_HOST:-"trustgate-redis-headless.$NAMESPACE.svc.cluster.local"}
 REDIS_PORT=${REDIS_PORT:-"6379"}
 REDIS_PASSWORD=${REDIS_PASSWORD:-$REDIS_PASSWORD}
@@ -378,9 +378,9 @@ helm upgrade --install $RELEASE_NAME helm-k8s/ \
   --set postgresql.auth.database=$DATABASE_NAME \
   --set redis.auth.password=$REDIS_PASSWORD \
   $INGRESS_ENABLED \
-  --set ingress.controlPlane.host=$CONTROL_PLANE_HOST \
-  --set ingress.dataPlane.host=$DATA_PLANE_HOST \
-  --set ingress.actions.host=$ACTIONS_HOST \
+  --set ingress.controlPlane.host="${CONTROL_PLANE_HOST:-admin.${SERVER_BASE_DOMAIN}}" \
+  --set ingress.dataPlane.host="${DATA_PLANE_HOST:-gateway.${SERVER_BASE_DOMAIN}}" \
+  --set ingress.actions.host="${ACTIONS_HOST:-actions.${SERVER_BASE_DOMAIN}}" \
   --set global.env.LOG_LEVEL=$LOG_LEVEL \
   --set global.env.SERVER_BASE_DOMAIN=$SERVER_BASE_DOMAIN \
   --set global.env.SERVER_ADMIN_PORT=$SERVER_ADMIN_PORT \
